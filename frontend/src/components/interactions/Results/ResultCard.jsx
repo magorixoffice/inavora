@@ -1,0 +1,85 @@
+// eslint-disable-next-line
+import { motion } from 'framer-motion';
+import { BarChart2, MessageSquare, Type, ListOrdered, Target, Grid, MapPin, Trophy, Hash, PieChart } from 'lucide-react';
+
+const getTypeConfig = (type) => {
+    switch (type) {
+        case 'multiple_choice': return { label: 'Multiple Choice', icon: BarChart2, color: 'text-[#2196F3]', bg: 'bg-[#2196F3]/10' };
+        case 'word_cloud': return { label: 'Word Cloud', icon: MessageSquare, color: 'text-[#9C27B0]', bg: 'bg-[#9C27B0]/10' };
+        case 'open_ended': return { label: 'Open Ended', icon: Type, color: 'text-[#4CAF50]', bg: 'bg-[#4CAF50]/10' };
+        case 'scales': return { label: 'Scales', icon: Target, color: 'text-[#FF9800]', bg: 'bg-[#FF9800]/10' };
+        case 'ranking': return { label: 'Ranking', icon: ListOrdered, color: 'text-[#FFEB3B]', bg: 'bg-[#FFEB3B]/10' };
+        case 'hundred_points': return { label: '100 Points', icon: PieChart, color: 'text-[#E91E63]', bg: 'bg-[#E91E63]/10' };
+        case '2x2_grid': return { label: '2x2 Grid', icon: Grid, color: 'text-[#00BCD4]', bg: 'bg-[#00BCD4]/10' };
+        case 'pin_on_image': return { label: 'Pin on Image', icon: MapPin, color: 'text-[#F44336]', bg: 'bg-[#F44336]/10' };
+        case 'quiz': return { label: 'Quiz', icon: Trophy, color: 'text-[#3F51B5]', bg: 'bg-[#3F51B5]/10' };
+        case 'guess_number': return { label: 'Guess Number', icon: Hash, color: 'text-[#009688]', bg: 'bg-[#009688]/10' };
+        case 'qna': return { label: 'Q&A', icon: MessageSquare, color: 'text-[#4CAF50]', bg: 'bg-[#4CAF50]/10' };
+        case 'leaderboard': return { label: 'Leaderboard', icon: Trophy, color: 'text-[#FFC107]', bg: 'bg-[#FFC107]/10' };
+        case 'pick_answer': return { label: 'Pick Answer', icon: BarChart2, color: 'text-[#2196F3]', bg: 'bg-[#2196F3]/10' };
+        case 'type_answer': return { label: 'Type Answer', icon: Type, color: 'text-[#4CAF50]', bg: 'bg-[#4CAF50]/10' };
+        default: return { label: 'Slide', icon: BarChart2, color: 'text-[#B0B0B0]', bg: 'bg-[#B0B0B0]/10' };
+    }
+};
+
+const ResultCard = ({ slide, totalResponses, children, qnaProp }) => {
+    const { label, icon: Icon, color, bg } = getTypeConfig(slide?.type);
+    
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="w-full max-w-5xl mx-auto mb-12 bg-[#1e293b]/50 backdrop-blur-sm border border-white/10 rounded-2xl overflow-hidden shadow-xl"
+        >
+            {/* Header */}
+            <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <div className={`p-2 rounded-lg ${bg}`}>
+                        <Icon className={`w-5 h-5 ${color}`} />
+                    </div>
+                    <span className={`text-sm font-medium ${color} uppercase tracking-wider`}>
+                        {label}
+                    </span>
+                </div>
+                <div className="flex items-center gap-2 text-[#B0B0B0] text-sm">
+                    <span className="font-semibold text-[#E0E0E0]">{totalResponses || 0}</span>
+                    <span>responses</span>
+                </div>
+            </div>
+
+            {/* Question/Title */}
+            <div className={`px-8 py-6 ${qnaProp && 'flex items-center justify-between gap-2'}`}>
+                <h3 className="text-2xl font-semibold text-[#E0E0E0] leading-tight">
+                    {slide?.question || 'Untitled Slide'}
+                </h3>
+                {qnaProp && 
+                <div className="flex justify-center">
+                    <div className="flex p-1 bg-[#2A2A2A] rounded-xl border border-[#2F2F2F]">
+                        {['all', 'answered', 'unanswered'].map((f) => (
+                            <button
+                                key={f}
+                                onClick={() => qnaProp.setFilter(f)}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${qnaProp.filter === f
+                                    ? 'bg-[#1F1F1F] text-[#E0E0E0] shadow-sm'
+                                    : 'text-[#B0B0B0] hover:text-[#E0E0E0]'
+                                    }`}
+                            >
+                                {f.charAt(0).toUpperCase() + f.slice(1)}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+                }
+            </div>
+
+            {/* Content */}
+            <div className="px-8 pb-8">
+                {children}
+            </div>
+        </motion.div>
+    );
+};
+
+export default ResultCard;

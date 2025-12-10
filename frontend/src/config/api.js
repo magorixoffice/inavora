@@ -1,0 +1,75 @@
+import axios from 'axios';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : 'http://localhost:4001/api';
+
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
+// Add token to requests if available
+api.interceptors.request.use(
+  (config) => {
+    // Check for super admin token first (for super admin routes)
+    const superAdminToken = sessionStorage.getItem('superAdminToken');
+    
+    if (superAdminToken) {
+      config.headers.Authorization = `Bearer ${superAdminToken}`;
+    } else {
+      // Check for institution admin token (for institution admin routes)
+      const institutionAdminToken = sessionStorage.getItem('institutionAdminToken');
+      if (institutionAdminToken) {
+        config.headers.Authorization = `Bearer ${institutionAdminToken}`;
+      } else {
+        // Fallback to regular JWT token
+        const token = localStorage.getItem('jwtToken');
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+      }
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Handle token expiration
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Check if it's a super admin route
+      const isSuperAdminRoute = error.config?.url?.includes('/super-admin') || 
+                                error.config?.url?.includes('/job-postings') ||
+                                error.config?.url?.includes('/careers/applications');
+      
+      // Check if it's an institution admin route
+      const isInstitutionAdminRoute = error.config?.url?.includes('/institution-admin');
+      
+      if (isSuperAdminRoute) {
+        // Remove super admin token and redirect to super admin page
+        sessionStorage.removeItem('superAdminToken');
+        if (window.location.pathname === '/super-admin') {
+          window.location.reload();
+        }
+      } else if (isInstitutionAdminRoute) {
+        // Remove institution admin token and redirect to institution admin page
+        sessionStorage.removeItem('institutionAdminToken');
+        if (window.location.pathname === '/institution-admin') {
+          window.location.reload();
+        }
+      } else {
+        // Regular auth token expiration
+        localStorage.removeItem('jwtToken');
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+export default api;

@@ -1,0 +1,242 @@
+import { createContext, useContext, useState, useEffect } from 'react';
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  updateProfile,
+  GoogleAuthProvider,
+  signInWithPopup
+} from 'firebase/auth';
+import { auth } from '../config/firebase';
+import api from '../config/api';
+
+const AuthContext = createContext();
+
+// eslint-disable-next-line
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
+
+export const AuthProvider = ({ children }) => {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [jwtToken, setJwtToken] = useState(localStorage.getItem('jwtToken'));
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  /**
+   * Exchange Firebase token for JWT
+   */
+  const exchangeFirebaseTokenForJWT = async (firebaseUser) => {
+    try {
+      const firebaseToken = await firebaseUser.getIdToken();
+
+      const response = await api.post('/auth/firebase', { firebaseToken });
+
+      const { token, user } = response.data;
+
+      // Store JWT token
+      localStorage.setItem('jwtToken', token);
+      setJwtToken(token);
+
+      return user;
+    } catch (error) {
+      console.error('Error exchanging token:', error);
+
+      // Extract server error message
+      const serverError = error.response?.data?.error || error.message;
+      const enhancedError = new Error(serverError);
+      enhancedError.code = error.code;
+      enhancedError.response = error.response;
+
+      throw enhancedError;
+    }
+  };
+
+  /**
+   * Register new user
+   */
+  const register = async (email, password, displayName) => {
+    try {
+      setError(null);
+
+      // Create user in Firebase
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+
+      // Update display name
+      await updateProfile(userCredential.user, { displayName });
+
+      // Exchange Firebase token for JWT
+      const user = await exchangeFirebaseTokenForJWT(userCredential.user);
+
+      setCurrentUser(user);
+      return user;
+    } catch (error) {
+      setError(error.message);
+      throw error;
+    }
+  };
+
+  /**
+   * Login user
+   */
+  const login = async (email, password) => {
+    try {
+      setError(null);
+
+      // Sign in with Firebase
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+
+      // Exchange Firebase token for JWT
+      const user = await exchangeFirebaseTokenForJWT(userCredential.user);
+
+      setCurrentUser(user);
+      return user;
+    } catch (error) {
+      setError(error.message);
+      throw error;
+    }
+  };
+
+  /**
+   * Login with Google
+   */
+  const loginWithGoogle = async () => {
+    try {
+      setError(null);
+
+      const provider = new GoogleAuthProvider();
+      const userCredential = await signInWithPopup(auth, provider);
+
+      // Exchange Firebase token for JWT
+      const user = await exchangeFirebaseTokenForJWT(userCredential.user);
+
+      setCurrentUser(user);
+      return user;
+    } catch (error) {
+      setError(error.message);
+      throw error;
+    }
+  };
+
+  /**
+   * Logout user
+   */
+  const logout = async () => {
+    try {
+      // Clear state immediately for instant UI update
+      setCurrentUser(null);
+      setJwtToken(null);
+      localStorage.removeItem('jwtToken');
+      
+      // Sign out from Firebase asynchronously (don't wait for it)
+      // This prevents blocking the UI update
+      signOut(auth).catch((error) => {
+        console.error('Firebase sign out error (non-blocking):', error);
+        // Even if Firebase signOut fails, state is already cleared
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Ensure state is cleared even on error
+      localStorage.removeItem('jwtToken');
+      setCurrentUser(null);
+      setJwtToken(null);
+      throw error;
+    }
+  };
+
+  /**
+   * Get current user from backend
+   */
+  const getCurrentUser = async () => {
+    try {
+      const response = await api.get('/auth/me');
+      return response.data.user;
+    } catch (error) {
+      console.error('Get current user error:', error);
+      return null;
+    }
+  };
+
+  /**
+   * Listen to Firebase auth state changes
+   */
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      // Check if JWT token exists in localStorage (source of truth)
+      const storedToken = localStorage.getItem('jwtToken');
+
+      // If no token in localStorage, user is logged out - don't make API calls
+      if (!storedToken) {
+        setCurrentUser(null);
+        setLoading(false);
+        return;
+      }
+
+      if (firebaseUser && storedToken) {
+        // User is signed in Firebase and has JWT - fetch user data
+        try {
+          const user = await getCurrentUser();
+          setCurrentUser(user);
+        } catch (error) {
+          console.error('Auth state change error:', error);
+          setCurrentUser(null);
+        }
+      } else if (firebaseUser && !storedToken) {
+        // User is signed in Firebase but no JWT - exchange tokens
+        try {
+          const user = await exchangeFirebaseTokenForJWT(firebaseUser);
+          setCurrentUser(user);
+        } catch (error) {
+          console.error('Auth state change error:', error);
+          setCurrentUser(null);
+        }
+      } else {
+        // No Firebase user or no token - user is logged out
+        setCurrentUser(null);
+      }
+
+      setLoading(false);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  /**
+   * Refresh current user data
+   */
+  const refreshUser = async () => {
+    try {
+      const user = await getCurrentUser();
+      setCurrentUser(user);
+      return user;
+    } catch (error) {
+      console.error('Refresh user error:', error);
+      return null;
+    }
+  };
+
+  const value = {
+    currentUser,
+    user: currentUser, // Alias for consistency
+    token: jwtToken, // Expose token for API calls
+    jwtToken,
+    loading,
+    error,
+    register,
+    login,
+    loginWithGoogle,
+    logout,
+    refreshUser
+  };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {!loading && children}
+    </AuthContext.Provider>
+  );
+};
