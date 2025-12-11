@@ -23,9 +23,7 @@ const initializeResend = () => {
   if (!resendClient) {
     try {
       resendClient = new Resend(process.env.RESEND_API_KEY);
-      Logger.startup('Resend email service initialized');
-      console.log('✅ Resend email service initialized');
-      console.log(`📧 From email: ${process.env.RESEND_FROM_EMAIL || 'noreply@inavora.com'}`);
+      // Email service initialized silently
     } catch (error) {
       Logger.error('Failed to initialize Resend client', error);
       console.error('❌ Failed to initialize Resend:', error);

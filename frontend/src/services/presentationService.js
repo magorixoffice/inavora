@@ -190,6 +190,20 @@ export const getPresentationResults = async (id) => {
   }
 };
 
+// Export presentation results
+export const exportPresentationResults = async (id, format = 'csv') => {
+  try {
+    const response = await api.get(`/presentations/${id}/export`, {
+      params: { format },
+      responseType: 'blob'
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Export presentation results error:', error);
+    throw error;
+  }
+};
+
 // Toggle QnA status
 export const toggleQnaStatus = async (presentationId, questionId, isAnswered) => {
   try {

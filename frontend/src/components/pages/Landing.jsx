@@ -880,7 +880,7 @@ export default function Landing() {
               {
                 name: t('landing.pricing_institution'),
                 price: t('landing.pricing_institution_price'),
-                period: '/person/year',
+                period: '/year',
                 features: [
                   t('landing.pricing_institution_admin_dashboard'),
                   t('landing.pricing_institution_custom_branding'),

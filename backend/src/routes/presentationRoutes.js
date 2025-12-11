@@ -135,6 +135,13 @@ router.delete('/:id', presentationController.deletePresentation);
 router.get('/:id/results', presentationController.getPresentationResultById);
 
 /**
+ * @route   GET /api/presentations/:id/export
+ * @desc    Export presentation results (CSV/Excel)
+ * @access  Private
+ */
+router.get('/:id/export', presentationController.exportPresentationResults);
+
+/**
  * @route   POST /api/presentations/:presentationId/slides
  * @desc    Create a new slide in a presentation
  * @access  Private

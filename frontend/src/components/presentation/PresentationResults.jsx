@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { LoaderCircle, Download } from 'lucide-react';
 import * as presentationService from '../../services/presentationService';
+import toast from 'react-hot-toast';
 
 // Import new Result Components
 import MCQResult from '../interactions/Results/MCQResult';
@@ -58,6 +59,36 @@ const PresentationResults = ({ slides, presentationId }) => {
 
         fetchData();
     }, [presentationId]);
+
+    const handleExportData = async (format) => {
+        if (!presentationId) {
+            toast.error('No presentation selected');
+            return;
+        }
+        
+        setIsExporting(true);
+        try {
+            const blob = await presentationService.exportPresentationResults(presentationId, format);
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            const extension = format === 'csv' ? 'csv' : 'xlsx';
+            const fileName = presentation?.title 
+                ? `presentation-results-${presentation.title.replace(/[^a-z0-9]/gi, '_')}-${new Date().toISOString().split('T')[0]}.${extension}`
+                : `presentation-results-${new Date().toISOString().split('T')[0]}.${extension}`;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+            toast.success(`Exported as ${format.toUpperCase()}`);
+        } catch (error) {
+            console.error('Export error:', error);
+            toast.error('Failed to export results');
+        } finally {
+            setIsExporting(false);
+        }
+    };
 
     const handleExportToPDF = async () => {
         if (!resultsRef.current) {
@@ -473,14 +504,40 @@ const PresentationResults = ({ slides, presentationId }) => {
                             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[#E0E0E0] mb-1 sm:mb-2">Presentation Results</h2>
                             <p className="text-sm sm:text-base text-[#B0B0B0]">Overview of all responses collected</p>
                         </div>
-                        <button
-                            onClick={handleExportToPDF}
-                            disabled={isExporting}
-                            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white rounded-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shadow-lg hover:shadow-xl"
-                        >
-                            <Download className="w-4 h-4" />
-                            {isExporting ? 'Exporting...' : 'Export to PDF'}
-                        </button>
+                        <div className="flex gap-2">
+                            <div className="relative group">
+                                <button
+                                    disabled={isExporting}
+                                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white rounded-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shadow-lg hover:shadow-xl"
+                                >
+                                    <Download className="w-4 h-4" />
+                                    {isExporting ? 'Exporting...' : 'Export'}
+                                </button>
+                                <div className="absolute right-0 top-full mt-1 w-48 bg-[#1e293b] border border-white/10 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                                    <button
+                                        onClick={handleExportToPDF}
+                                        disabled={isExporting}
+                                        className="w-full text-left px-4 py-2 hover:bg-white/5 text-sm text-white disabled:opacity-50"
+                                    >
+                                        Export as PDF
+                                    </button>
+                                    <button
+                                        onClick={() => handleExportData('csv')}
+                                        disabled={isExporting}
+                                        className="w-full text-left px-4 py-2 hover:bg-white/5 text-sm text-white disabled:opacity-50"
+                                    >
+                                        Export as CSV
+                                    </button>
+                                    <button
+                                        onClick={() => handleExportData('excel')}
+                                        disabled={isExporting}
+                                        className="w-full text-left px-4 py-2 hover:bg-white/5 text-sm text-white disabled:opacity-50"
+                                    >
+                                        Export as Excel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

@@ -102,6 +102,7 @@ app.use(notFound);
 app.use(errorHandler);
 
 io.on('connection', (socket) => {
+    // Only log socket connections in debug mode to reduce noise
     Logger.debug(`Client connected: ${socket.id}`);
     setupSocketHandlers(io, socket);
 });

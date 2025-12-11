@@ -288,14 +288,15 @@ const InstitutionAdmin = () => {
         }
     };
 
-    const handleExport = async (type) => {
+    const handleExport = async (type, format = 'json') => {
         try {
             const response = await api.get('/institution-admin/export', {
-                params: { type }
+                params: { type, format },
+                responseType: format === 'json' ? 'json' : 'blob'
             });
             
-            if (response.data.success) {
-                // Create blob and download
+            if (format === 'json' && response.data.success) {
+                // Create blob and download JSON
                 const blob = new Blob([JSON.stringify(response.data.data, null, 2)], { type: 'application/json' });
                 const url = window.URL.createObjectURL(blob);
                 const link = document.createElement('a');
@@ -305,9 +306,23 @@ const InstitutionAdmin = () => {
                 link.click();
                 document.body.removeChild(link);
                 window.URL.revokeObjectURL(url);
-                
-                toast.success(t('institution_admin.export_success', { type }));
+            } else if (format === 'csv' || format === 'excel') {
+                // Handle CSV/Excel download
+                const blob = new Blob([response.data], { 
+                    type: format === 'csv' ? 'text/csv' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+                });
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                const extension = format === 'csv' ? 'csv' : 'xlsx';
+                link.download = `institution-${type}-${new Date().toISOString().split('T')[0]}.${extension}`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
             }
+            
+            toast.success(t('institution_admin.export_success', { type, format }));
         } catch (error) {
             console.error('Export error:', error);
             toast.error(translateError(error, t, 'institution_admin.export_error'));
@@ -482,20 +497,62 @@ const InstitutionAdmin = () => {
                                     <Plus className="w-4 h-4" />
                                     Add User
                                 </button>
-                                <button
-                                    onClick={() => handleExport('presentations')}
-                                    className="flex items-center gap-2 px-4 py-2 bg-teal-500/20 text-teal-400 rounded-lg hover:bg-teal-500/30 transition-colors text-sm sm:text-base"
-                                >
-                                    <Download className="w-4 h-4" />
-                                    Export Presentations
-                                </button>
-                                <button
-                                    onClick={() => handleExport('users')}
-                                    className="flex items-center gap-2 px-4 py-2 bg-purple-500/20 text-purple-400 rounded-lg hover:bg-purple-500/30 transition-colors text-sm sm:text-base"
-                                >
-                                    <Download className="w-4 h-4" />
-                                    Export Users
-                                </button>
+                                <div className="relative group">
+                                    <button
+                                        className="flex items-center gap-2 px-4 py-2 bg-teal-500/20 text-teal-400 rounded-lg hover:bg-teal-500/30 transition-colors text-sm sm:text-base"
+                                    >
+                                        <Download className="w-4 h-4" />
+                                        Export Presentations
+                                    </button>
+                                    <div className="absolute left-0 top-full mt-1 w-48 bg-[#1e293b] border border-white/10 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                                        <button
+                                            onClick={() => handleExport('presentations', 'json')}
+                                            className="w-full text-left px-4 py-2 hover:bg-white/5 text-sm text-white"
+                                        >
+                                            Export as JSON
+                                        </button>
+                                        <button
+                                            onClick={() => handleExport('presentations', 'csv')}
+                                            className="w-full text-left px-4 py-2 hover:bg-white/5 text-sm text-white"
+                                        >
+                                            Export as CSV
+                                        </button>
+                                        <button
+                                            onClick={() => handleExport('presentations', 'excel')}
+                                            className="w-full text-left px-4 py-2 hover:bg-white/5 text-sm text-white"
+                                        >
+                                            Export as Excel
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="relative group">
+                                    <button
+                                        className="flex items-center gap-2 px-4 py-2 bg-purple-500/20 text-purple-400 rounded-lg hover:bg-purple-500/30 transition-colors text-sm sm:text-base"
+                                    >
+                                        <Download className="w-4 h-4" />
+                                        Export Users
+                                    </button>
+                                    <div className="absolute left-0 top-full mt-1 w-48 bg-[#1e293b] border border-white/10 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                                        <button
+                                            onClick={() => handleExport('users', 'json')}
+                                            className="w-full text-left px-4 py-2 hover:bg-white/5 text-sm text-white"
+                                        >
+                                            Export as JSON
+                                        </button>
+                                        <button
+                                            onClick={() => handleExport('users', 'csv')}
+                                            className="w-full text-left px-4 py-2 hover:bg-white/5 text-sm text-white"
+                                        >
+                                            Export as CSV
+                                        </button>
+                                        <button
+                                            onClick={() => handleExport('users', 'excel')}
+                                            className="w-full text-left px-4 py-2 hover:bg-white/5 text-sm text-white"
+                                        >
+                                            Export as Excel
+                                        </button>
+                                    </div>
+                                </div>
                                 <button
                                     onClick={() => setActiveTab('analytics')}
                                     className="flex items-center gap-2 px-4 py-2 bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 transition-colors text-sm sm:text-base"

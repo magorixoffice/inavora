@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const XLSX = require('xlsx');
 const Institution = require('../models/Institution');
 const User = require('../models/User');
 const Presentation = require('../models/Presentation');
@@ -635,10 +636,14 @@ const updateSettings = asyncHandler(async (req, res, next) => {
  */
 const exportData = asyncHandler(async (req, res, next) => {
   const institutionId = req.institutionId;
-  const { type = 'presentations' } = req.query;
+  const { type = 'presentations', format = 'json' } = req.query;
 
   if (!['presentations', 'users'].includes(type)) {
     throw new AppError('Invalid export type', 400, 'VALIDATION_ERROR');
+  }
+
+  if (!['json', 'csv', 'excel'].includes(format)) {
+    throw new AppError('Invalid export format. Use: json, csv, or excel', 400, 'VALIDATION_ERROR');
   }
 
   const institutionUsers = await User.find({ 
@@ -668,25 +673,59 @@ const exportData = asyncHandler(async (req, res, next) => {
     const responseCountMap = new Map(responseCounts.map(rc => [rc._id.toString(), rc.count]));
 
     const presentationsData = presentations.map((presentation) => ({
-      title: presentation.title,
-      accessCode: presentation.accessCode,
-      isLive: presentation.isLive,
-      slideCount: slideCountMap.get(presentation._id.toString()) || 0,
-      responseCount: responseCountMap.get(presentation._id.toString()) || 0,
-      createdBy: presentation.userId?.email || 'Unknown',
-      createdAt: presentation.createdAt,
-      updatedAt: presentation.updatedAt
+      Title: presentation.title,
+      'Access Code': presentation.accessCode,
+      'Is Live': presentation.isLive ? 'Yes' : 'No',
+      'Slide Count': slideCountMap.get(presentation._id.toString()) || 0,
+      'Response Count': responseCountMap.get(presentation._id.toString()) || 0,
+      'Created By': presentation.userId?.email || 'Unknown',
+      'Created At': new Date(presentation.createdAt).toLocaleString(),
+      'Updated At': new Date(presentation.updatedAt).toLocaleString()
     }));
 
-    res.status(200).json({
-      success: true,
-      data: {
-        type: 'presentations',
-        exportedAt: new Date(),
-        count: presentationsData.length,
-        presentations: presentationsData
-      }
-    });
+    if (format === 'json') {
+      return res.status(200).json({
+        success: true,
+        data: {
+          type: 'presentations',
+          exportedAt: new Date(),
+          count: presentationsData.length,
+          presentations: presentationsData
+        }
+      });
+    } else if (format === 'csv') {
+      // Convert to CSV
+      const headers = Object.keys(presentationsData[0] || {});
+      const csvRows = [
+        headers.join(','),
+        ...presentationsData.map(row => 
+          headers.map(header => {
+            const value = row[header] || '';
+            // Escape commas and quotes in CSV
+            if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
+              return `"${value.replace(/"/g, '""')}"`;
+            }
+            return value;
+          }).join(',')
+        )
+      ];
+      const csv = csvRows.join('\n');
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename=institution-presentations-${new Date().toISOString().split('T')[0]}.csv`);
+      return res.send(csv);
+    } else if (format === 'excel') {
+      // Convert to Excel
+      const worksheet = XLSX.utils.json_to_sheet(presentationsData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Presentations');
+      
+      const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+      
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename=institution-presentations-${new Date().toISOString().split('T')[0]}.xlsx`);
+      return res.send(excelBuffer);
+    }
   } else {
     const userIdsArray = institutionUsers.map(u => u._id);
     const presentationCounts = await Presentation.aggregate([
@@ -696,21 +735,55 @@ const exportData = asyncHandler(async (req, res, next) => {
     const presentationCountMap = new Map(presentationCounts.map(pc => [pc._id.toString(), pc.count]));
 
     const usersData = institutionUsers.map((user) => ({
-      email: user.email,
-      displayName: user.displayName,
-      presentationCount: presentationCountMap.get(user._id.toString()) || 0,
-      createdAt: user.createdAt
+      Email: user.email,
+      'Display Name': user.displayName || '',
+      'Presentation Count': presentationCountMap.get(user._id.toString()) || 0,
+      'Created At': new Date(user.createdAt).toLocaleString()
     }));
 
-    res.status(200).json({
-      success: true,
-      data: {
-        type: 'users',
-        exportedAt: new Date(),
-        count: usersData.length,
-        users: usersData
-      }
-    });
+    if (format === 'json') {
+      return res.status(200).json({
+        success: true,
+        data: {
+          type: 'users',
+          exportedAt: new Date(),
+          count: usersData.length,
+          users: usersData
+        }
+      });
+    } else if (format === 'csv') {
+      // Convert to CSV
+      const headers = Object.keys(usersData[0] || {});
+      const csvRows = [
+        headers.join(','),
+        ...usersData.map(row => 
+          headers.map(header => {
+            const value = row[header] || '';
+            // Escape commas and quotes in CSV
+            if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
+              return `"${value.replace(/"/g, '""')}"`;
+            }
+            return value;
+          }).join(',')
+        )
+      ];
+      const csv = csvRows.join('\n');
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename=institution-users-${new Date().toISOString().split('T')[0]}.csv`);
+      return res.send(csv);
+    } else if (format === 'excel') {
+      // Convert to Excel
+      const worksheet = XLSX.utils.json_to_sheet(usersData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Users');
+      
+      const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+      
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename=institution-users-${new Date().toISOString().split('T')[0]}.xlsx`);
+      return res.send(excelBuffer);
+    }
   }
 });
 

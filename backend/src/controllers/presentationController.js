@@ -1,6 +1,7 @@
 const Presentation = require('../models/Presentation');
 const Slide = require('../models/Slide');
 const Response = require('../models/Response');
+const XLSX = require('xlsx');
 const leaderboardService = require('../services/leaderboardService');
 const quizScoringService = require('../services/quizScoringService');
 const { createSlide, updateSlide, deleteSlide } = require('./slideController.js');
@@ -486,6 +487,376 @@ const getPresentationResultById = asyncHandler(async (req, res, next) => {
 });
 
 /**
+ * Export presentation results
+ * @route GET /api/presentations/:id/export
+ * @access Private
+ * @param {string} req.params.id - Presentation ID
+ * @param {string} req.query.format - Export format (csv, excel)
+ */
+const exportPresentationResults = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+  const { format = 'csv' } = req.query;
+  const userId = req.userId;
+
+  if (!['csv', 'excel'].includes(format)) {
+    throw new AppError('Invalid export format. Use: csv or excel', 400, 'VALIDATION_ERROR');
+  }
+
+  const presentation = await Presentation.findOne({ _id: id, userId });
+  if (!presentation) {
+    throw new AppError('Presentation not found', 404, 'RESOURCE_NOT_FOUND');
+  }
+
+  const slides = await Slide.find({ presentationId: id }).sort({ order: 1 });
+  const responses = await Response.find({ presentationId: id });
+  
+  // First, calculate all slide results
+  const results = {};
+  for (const slide of slides) {
+    const slideResponses = responses.filter(r => r.slideId.toString() === slide._id.toString());
+    let slideResult = { totalResponses: slideResponses.length };
+
+    if (slide.type === 'scales') {
+      const scaleStatements = slide.statements || [];
+      const statementSums = new Array(scaleStatements.length).fill(0);
+      const statementCounts = new Array(scaleStatements.length).fill(0);
+
+      slideResponses.forEach(r => {
+        if (typeof r.answer === 'object' && r.answer !== null) {
+          Object.entries(r.answer).forEach(([statementIndex, value]) => {
+            const idx = parseInt(statementIndex);
+            if (!isNaN(idx) && idx < scaleStatements.length) {
+              statementSums[idx] += value;
+              statementCounts[idx]++;
+            }
+          });
+        }
+      });
+
+      slideResult.scaleStatementAverages = statementSums.map((sum, idx) =>
+        statementCounts[idx] > 0 ? sum / statementCounts[idx] : 0
+      );
+    } else if (slide.type === 'ranking') {
+      const rankingResults = slide.rankingItems ? slide.rankingItems.map(item => ({
+        id: item.id,
+        label: item.label,
+        score: 0
+      })) : [];
+
+      slideResponses.forEach(r => {
+        if (Array.isArray(r.answer)) {
+          r.answer.forEach((itemId, index) => {
+            const points = (slide.rankingItems?.length || 0) - index;
+            const item = rankingResults.find(i => i.id === itemId);
+            if (item) {
+              item.score += points;
+            }
+          });
+        }
+      });
+      rankingResults.sort((a, b) => b.score - a.score);
+      slideResult.rankingResults = rankingResults;
+    } else if (slide.type === 'hundred_points') {
+      const hundredPointsResults = slide.hundredPointsItems ? slide.hundredPointsItems.map(item => ({
+        id: item.id,
+        label: item.label,
+        totalPoints: 0,
+        averagePoints: 0
+      })) : [];
+
+      slideResponses.forEach(r => {
+        if (Array.isArray(r.answer)) {
+          r.answer.forEach(entry => {
+            if (entry && entry.item) {
+              const item = hundredPointsResults.find(i => i.id === entry.item);
+              if (item) {
+                item.totalPoints += (parseInt(entry.points) || 0);
+              }
+            }
+          });
+        } else if (typeof r.answer === 'object' && r.answer !== null) {
+          Object.entries(r.answer).forEach(([itemId, points]) => {
+            const item = hundredPointsResults.find(i => i.id === itemId);
+            if (item) {
+              item.totalPoints += (parseInt(points) || 0);
+            }
+          });
+        }
+      });
+
+      hundredPointsResults.forEach(item => {
+        item.averagePoints = slideResponses.length > 0 ? item.totalPoints / slideResponses.length : 0;
+      });
+      slideResult.hundredPointsResults = hundredPointsResults;
+    }
+
+    results[slide._id] = slideResult;
+  }
+
+  // Now build export data using the calculated results
+  const exportData = [];
+  
+  for (const slide of slides) {
+    const slideResponses = responses.filter(r => r.slideId.toString() === slide._id.toString());
+    const slideTitle = typeof slide.question === 'string' ? slide.question : (slide.question?.text || `Slide ${slide.order + 1}`);
+    const slideResult = results[slide._id];
+    
+    switch (slide.type) {
+      case 'multiple_choice':
+      case 'pick_answer':
+        const voteCounts = {};
+        if (slide.options) {
+          slide.options.forEach(opt => voteCounts[opt] = 0);
+        }
+        slideResponses.forEach(r => {
+          if (voteCounts[r.answer] !== undefined) {
+            voteCounts[r.answer]++;
+          }
+        });
+        
+        exportData.push({
+          'Slide Title': slideTitle,
+          'Slide Type': slide.type,
+          'Total Responses': slideResponses.length,
+          'Option': '',
+          'Votes': '',
+          'Percentage': ''
+        });
+        
+        Object.entries(voteCounts).forEach(([option, count]) => {
+          const percentage = slideResponses.length > 0 ? ((count / slideResponses.length) * 100).toFixed(2) + '%' : '0%';
+          exportData.push({
+            'Slide Title': '',
+            'Slide Type': '',
+            'Total Responses': '',
+            'Option': option,
+            'Votes': count,
+            'Percentage': percentage
+          });
+        });
+        exportData.push({}); // Empty row separator
+        break;
+
+      case 'open_ended':
+      case 'type_answer':
+        exportData.push({
+          'Slide Title': slideTitle,
+          'Slide Type': slide.type,
+          'Total Responses': slideResponses.length,
+          'Response': '',
+          'Participant': '',
+          'Submitted At': '',
+          'Votes': ''
+        });
+        
+        slideResponses.forEach(r => {
+          exportData.push({
+            'Slide Title': '',
+            'Slide Type': '',
+            'Total Responses': '',
+            'Response': r.answer || '',
+            'Participant': r.participantName || 'Anonymous',
+            'Submitted At': new Date(r.submittedAt).toLocaleString(),
+            'Votes': r.voteCount || 0
+          });
+        });
+        exportData.push({}); // Empty row separator
+        break;
+
+      case 'quiz':
+        const quizVoteCounts = {};
+        if (slide.quizSettings?.options) {
+          slide.quizSettings.options.forEach(opt => {
+            quizVoteCounts[opt.text || opt.id] = 0;
+          });
+        }
+        let correctCount = 0;
+        slideResponses.forEach(r => {
+          if (r.isCorrect) correctCount++;
+          const optionText = slide.quizSettings?.options?.find(opt => opt.id === r.answer)?.text || r.answer;
+          if (quizVoteCounts[optionText] !== undefined) {
+            quizVoteCounts[optionText]++;
+          }
+        });
+        
+        exportData.push({
+          'Slide Title': slideTitle,
+          'Slide Type': 'quiz',
+          'Total Responses': slideResponses.length,
+          'Correct Responses': correctCount,
+          'Accuracy': slideResponses.length > 0 ? ((correctCount / slideResponses.length) * 100).toFixed(2) + '%' : '0%',
+          'Option': '',
+          'Votes': '',
+          'Percentage': ''
+        });
+        
+        Object.entries(quizVoteCounts).forEach(([option, count]) => {
+          const percentage = slideResponses.length > 0 ? ((count / slideResponses.length) * 100).toFixed(2) + '%' : '0%';
+          exportData.push({
+            'Slide Title': '',
+            'Slide Type': '',
+            'Total Responses': '',
+            'Correct Responses': '',
+            'Accuracy': '',
+            'Option': option,
+            'Votes': count,
+            'Percentage': percentage
+          });
+        });
+        exportData.push({}); // Empty row separator
+        break;
+
+      case 'scales':
+        exportData.push({
+          'Slide Title': slideTitle,
+          'Slide Type': 'scales',
+          'Total Responses': slideResponses.length,
+          'Statement': '',
+          'Average': ''
+        });
+        
+        if (slide.statements && slideResult?.scaleStatementAverages) {
+          slide.statements.forEach((statement, idx) => {
+            exportData.push({
+              'Slide Title': '',
+              'Slide Type': '',
+              'Total Responses': '',
+              'Statement': statement,
+              'Average': slideResult.scaleStatementAverages[idx]?.toFixed(2) || '0'
+            });
+          });
+        }
+        exportData.push({}); // Empty row separator
+        break;
+
+      case 'ranking':
+        if (slideResult?.rankingResults) {
+          exportData.push({
+            'Slide Title': slideTitle,
+            'Slide Type': 'ranking',
+            'Total Responses': slideResponses.length,
+            'Item': '',
+            'Score': '',
+            'Rank': ''
+          });
+          
+          slideResult.rankingResults.forEach((item, idx) => {
+            exportData.push({
+              'Slide Title': '',
+              'Slide Type': '',
+              'Total Responses': '',
+              'Item': item.label,
+              'Score': item.score,
+              'Rank': idx + 1
+            });
+          });
+        }
+        exportData.push({}); // Empty row separator
+        break;
+
+      case 'hundred_points':
+        if (slideResult?.hundredPointsResults) {
+          exportData.push({
+            'Slide Title': slideTitle,
+            'Slide Type': 'hundred_points',
+            'Total Responses': slideResponses.length,
+            'Item': '',
+            'Total Points': '',
+            'Average Points': ''
+          });
+          
+          slideResult.hundredPointsResults.forEach(item => {
+            exportData.push({
+              'Slide Title': '',
+              'Slide Type': '',
+              'Total Responses': '',
+              'Item': item.label,
+              'Total Points': item.totalPoints,
+              'Average Points': item.averagePoints.toFixed(2)
+            });
+          });
+        }
+        exportData.push({}); // Empty row separator
+        break;
+
+      case 'qna':
+        exportData.push({
+          'Slide Title': slideTitle,
+          'Slide Type': 'qna',
+          'Total Questions': slideResponses.length,
+          'Question': '',
+          'Participant': '',
+          'Submitted At': '',
+          'Upvotes': '',
+          'Answered': ''
+        });
+        
+        slideResponses.forEach(r => {
+          exportData.push({
+            'Slide Title': '',
+            'Slide Type': '',
+            'Total Questions': '',
+            'Question': r.answer || '',
+            'Participant': r.participantName || 'Anonymous',
+            'Submitted At': new Date(r.submittedAt).toLocaleString(),
+            'Upvotes': r.voteCount || 0,
+            'Answered': r.isAnswered ? 'Yes' : 'No'
+          });
+        });
+        exportData.push({}); // Empty row separator
+        break;
+
+      default:
+        exportData.push({
+          'Slide Title': slideTitle,
+          'Slide Type': slide.type,
+          'Total Responses': slideResponses.length
+        });
+        exportData.push({}); // Empty row separator
+    }
+  }
+
+  if (format === 'csv') {
+    // Convert to CSV
+    if (exportData.length === 0) {
+      throw new AppError('No data to export', 400, 'VALIDATION_ERROR');
+    }
+    const headers = Object.keys(exportData[0] || {});
+    const csvRows = [
+      headers.join(','),
+      ...exportData.map(row => 
+        headers.map(header => {
+          const value = row[header] || '';
+          if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
+            return `"${value.replace(/"/g, '""')}"`;
+          }
+          return value;
+        }).join(',')
+      )
+    ];
+    const csv = csvRows.join('\n');
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=presentation-results-${presentation.title.replace(/[^a-z0-9]/gi, '_')}-${new Date().toISOString().split('T')[0]}.csv`);
+    return res.send(csv);
+  } else if (format === 'excel') {
+    // Convert to Excel
+    if (exportData.length === 0) {
+      throw new AppError('No data to export', 400, 'VALIDATION_ERROR');
+    }
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Results');
+    
+    const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=presentation-results-${presentation.title.replace(/[^a-z0-9]/gi, '_')}-${new Date().toISOString().split('T')[0]}.xlsx`);
+    return res.send(excelBuffer);
+  }
+});
+
+/**
  * Update presentation
  * @route PUT /api/presentations/:id
  * @access Private
@@ -732,6 +1103,7 @@ module.exports = {
   getUserPresentations,
   getPresentationById,
   getPresentationResultById,
+  exportPresentationResults,
   updatePresentation,
   deletePresentation,
   createSlide,

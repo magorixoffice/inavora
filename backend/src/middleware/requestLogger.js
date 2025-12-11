@@ -44,11 +44,15 @@ const requestLogger = (req, res, next) => {
     };
     
     // Log based on status code
+    // Only log successful requests (2xx, 3xx) if LOG_LEVEL is 'info' or 'debug'
+    // Always log errors (4xx, 5xx) as warnings/errors
     if (res.statusCode >= 500) {
       Logger.error(`[${requestId}] ${req.method} ${req.originalUrl || req.url} - ${res.statusCode} (${responseTime}ms)`, logData);
     } else if (res.statusCode >= 400) {
       Logger.warn(`[${requestId}] ${req.method} ${req.originalUrl || req.url} - ${res.statusCode} (${responseTime}ms)`);
     } else {
+      // Only log successful requests if log level is info or debug
+      // This reduces noise in the terminal
       Logger.info(`[${requestId}] ${req.method} ${req.originalUrl || req.url} - ${res.statusCode} (${responseTime}ms)`);
     }
     
