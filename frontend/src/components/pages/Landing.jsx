@@ -626,9 +626,9 @@ export default function Landing() {
                   </h3>
 
                   {[
-                    { label: t('landing.live_polls'), percent: t('landing.live_polls_percent'), width: "58%", color: "bg-blue-500" },
-                    { label: t('landing.qa_sessions'), percent: t('landing.qa_sessions_percent'), width: "24%", color: "bg-teal-500" },
-                    { label: t('landing.word_clouds'), percent: t('landing.word_clouds_percent'), width: "18%", color: "bg-orange-500" },
+                    { label: t('landing.live_polls'), percent: "58%", width: "58%", color: "bg-blue-500" },
+                    { label: t('landing.qa_sessions'), percent: "24%", width: "24%", color: "bg-teal-500" },
+                    { label: t('landing.word_clouds'), percent: "18%", width: "18%", color: "bg-orange-500" },
                   ].map((item, i) => (
                     <motion.div
                       key={item.label}
@@ -839,9 +839,11 @@ export default function Landing() {
                 name: t('landing.pricing_free'),
                 price: t('landing.pricing_free_price'),
                 features: [
-                  t('landing.pricing_free_slides'),
-                  t('landing.pricing_free_audience'),
-                  t('landing.pricing_free_charts')
+                  t('pricing.free_plan_feature1'),
+                  t('pricing.free_plan_feature2'),
+                  t('pricing.free_plan_feature3'),
+                  t('pricing.free_plan_feature4'),
+                  t('pricing.free_plan_feature5')
                 ],
                 color: 'from-blue-500 to-cyan-500',
                 borderColor: 'border-blue-500/20',
@@ -854,10 +856,11 @@ export default function Landing() {
                 originalPrice: billingCycle === 'yearly' ? t('landing.pricing_pro_original_price') : null,
                 saveLabel: billingCycle === 'yearly' ? t('landing.pricing_save_20') : null,
                 features: [
-                  t('landing.pricing_pro_unlimited_slides'),
-                  t('landing.pricing_pro_unlimited_audience'),
-                  t('landing.pricing_pro_ai_features'),
-                  t('landing.pricing_pro_export_results')
+                  t('pricing.pro_plan_feature1'),
+                  t('pricing.pro_plan_feature2'),
+                  t('pricing.pro_plan_feature3'),
+                  t('pricing.pro_plan_feature4'),
+                  t('pricing.pro_plan_feature5')
                 ],
                 color: 'from-teal-400 to-emerald-500',
                 borderColor: 'border-teal-500/30',
@@ -868,9 +871,11 @@ export default function Landing() {
                 price: t('landing.pricing_lifetime_price'),
                 period: ' one-time',
                 features: [
-                  t('landing.pricing_lifetime_everything_in_pro'),
-                  t('landing.pricing_lifetime_access'),
-                  t('landing.pricing_lifetime_no_fees')
+                  t('pricing.lifetime_plan_feature1'),
+                  t('pricing.lifetime_plan_feature2'),
+                  t('pricing.lifetime_plan_feature3'),
+                  t('pricing.lifetime_plan_feature4'),
+                  t('pricing.lifetime_plan_feature5')
                 ],
                 highlight: true,
                 saveLabel: t('landing.pricing_popular'),
@@ -880,12 +885,15 @@ export default function Landing() {
               },
               {
                 name: t('landing.pricing_institution'),
-                price: t('landing.pricing_institution_price'),
-                period: '/year',
+                price: t('pricing.institution_plan_price'),
+                period: t('pricing.institution_plan_period'),
                 features: [
-                  t('landing.pricing_institution_admin_dashboard'),
-                  t('landing.pricing_institution_custom_branding'),
-                  t('landing.pricing_institution_bulk_management')
+                  t('pricing.institution_plan_feature2'),
+                  t('pricing.institution_plan_feature3'),
+                  t('pricing.institution_plan_feature4'),
+                  t('pricing.institution_plan_feature6'),
+                  t('pricing.institution_plan_feature5'),
+                  t('pricing.lifetime_plan_feature5')
                 ],
                 color: 'from-indigo-500 to-purple-500',
                 borderColor: 'border-purple-500/30',

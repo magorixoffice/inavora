@@ -14,7 +14,7 @@ const razorpay = new Razorpay({
 const PLAN_PRICES = {
     'pro-monthly': { amount: 19900, currency: 'INR', durationDays: 30 },
     'pro-yearly': { amount: 99900, currency: 'INR', durationDays: 365 },
-    'lifetime': { amount: 299900, currency: 'INR', durationDays: null },
+    'lifetime': { amount: 499900, currency: 'INR', durationDays: null },
     'institution': { amount: 49900, currency: 'INR', durationDays: 365 },
 };
 

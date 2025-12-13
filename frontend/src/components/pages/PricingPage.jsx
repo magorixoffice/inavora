@@ -27,7 +27,8 @@ const PricingPage = () => {
                 t('pricing.free_plan_feature1'),
                 t('pricing.free_plan_feature2'),
                 t('pricing.free_plan_feature3'),
-                t('pricing.free_plan_feature4')
+                t('pricing.free_plan_feature4'),
+                t('pricing.free_plan_feature5')
             ],
             buttonText: user ? t('pricing.free_plan_button_current') : t('pricing.free_plan_button_continue'),
             disabled: user ? true : false,
@@ -63,7 +64,8 @@ const PricingPage = () => {
                 t('pricing.lifetime_plan_feature1'),
                 t('pricing.lifetime_plan_feature2'),
                 t('pricing.lifetime_plan_feature3'),
-                t('pricing.lifetime_plan_feature4')
+                t('pricing.lifetime_plan_feature4'),
+                t('pricing.lifetime_plan_feature5')
             ],
             buttonText: t('pricing.lifetime_plan_button'),
             highlight: true,
@@ -77,11 +79,12 @@ const PricingPage = () => {
             price: t('pricing.institution_plan_price'),
             period: t('pricing.institution_plan_period'),
             features: [
-                t('pricing.institution_plan_feature1'),
                 t('pricing.institution_plan_feature2'),
                 t('pricing.institution_plan_feature3'),
                 t('pricing.institution_plan_feature4'),
-                t('pricing.institution_plan_feature5')
+                t('pricing.institution_plan_feature6'),
+                t('pricing.institution_plan_feature5'),
+                t('pricing.lifetime_plan_feature5')
             ],
             buttonText: t('pricing.institution_plan_button'),
             color: 'from-indigo-500 to-purple-500',

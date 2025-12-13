@@ -1074,8 +1074,8 @@ const SlideBar = ({ slides, currentSlideIndex, onSlideSelect, onDeleteSlide, onN
   // Vertical layout for desktop
   return (
     <aside className="w-full sm:w-56 lg:w-44 bg-[#121212] border-r border-[#2A2A2A] flex flex-col min-h-0 h-full">
-      {/* New Slide Button */}
-      <div className="p-3 border-b border-[#2A2A2A]">
+      {/* New Slide Button - Sticky at top */}
+      <div className="sticky top-0 z-10 bg-[#121212] p-3 border-b border-[#2A2A2A]">
         <button
           onClick={onNewSlideClick}
           className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium transition-all ${
