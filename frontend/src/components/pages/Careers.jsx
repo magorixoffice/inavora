@@ -15,7 +15,6 @@ const Careers = () => {
     const { t } = useTranslation();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedPosition, setSelectedPosition] = useState('');
-    const [selectedDepartment, setSelectedDepartment] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [resumeFile, setResumeFile] = useState(null);
     const [resumePreview, setResumePreview] = useState(null);
@@ -108,7 +107,6 @@ const Careers = () => {
 
     const handleOpenModal = (positionTitle, department) => {
         setSelectedPosition(positionTitle);
-        setSelectedDepartment(department);
         setFormData(prev => ({ ...prev, position: positionTitle, department: department }));
         setIsModalOpen(true);
     };
@@ -116,7 +114,6 @@ const Careers = () => {
     const handleCloseModal = () => {
         setIsModalOpen(false);
         setSelectedPosition('');
-        setSelectedDepartment('');
         setResumeFile(null);
         setResumePreview(null);
         setFormData({
@@ -662,7 +659,7 @@ const Careers = () => {
                                         <h3 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4 pb-2 border-b border-white/10">Professional Links</h3>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
+                                                <label className="text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
                                                     <LinkIcon className="w-4 h-4" /> LinkedIn
                                                 </label>
                                                 <input
@@ -674,7 +671,7 @@ const Careers = () => {
                                                 />
                                             </div>
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
+                                                <label className="text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
                                                     <LinkIcon className="w-4 h-4" /> Portfolio
                                                 </label>
                                                 <input
@@ -686,7 +683,7 @@ const Careers = () => {
                                                 />
                                             </div>
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
+                                                <label className="text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
                                                     <LinkIcon className="w-4 h-4" /> GitHub
                                                 </label>
                                                 <input

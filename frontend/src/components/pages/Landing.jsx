@@ -1,9 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { io } from 'socket.io-client';
 import { useTranslation } from 'react-i18next';
-import { getSocketUrl } from '../../utils/config';
 import {
   BarChart2,
   Bot,
@@ -59,21 +57,30 @@ export default function Landing() {
     ];
   }, [t]);
 
-  // Setup socket connection for real-time platform user count
+  // Setup socket connection for real-time platform user count - defer until after initial render
   useEffect(() => {
-    const newSocket = io(getSocketUrl());
+    // Delay socket connection to not block initial render
+    let socket = null;
+    const timer = setTimeout(() => {
+      import('socket.io-client').then(({ default: io }) => {
+        import('../../utils/config').then(({ getSocketUrl }) => {
+          socket = io(getSocketUrl());
 
-    // Join the landing page room and request initial count
-    newSocket.emit('get-platform-users');
+          // Join the landing page room and request initial count
+          socket.emit('get-platform-users');
 
-    // Listen for updates to platform users
-    newSocket.on('platform-users-updated', (data) => {
-      setPlatformUserCount(data.count);
-    });
+          // Listen for updates to platform users
+          socket.on('platform-users-updated', (data) => {
+            setPlatformUserCount(data.count);
+          });
+        });
+      });
+    }, 1500); // Wait 1.5 seconds after page load to not block initial render
 
     return () => {
-      if (newSocket) {
-        newSocket.disconnect();
+      clearTimeout(timer);
+      if (socket) {
+        socket.disconnect();
       }
     };
   }, []);

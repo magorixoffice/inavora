@@ -229,5 +229,33 @@ router.delete('/custom-reports/:reportId', verifyInstitutionAdmin, institutionAd
  */
 router.put('/security-settings', verifyInstitutionAdmin, institutionAdminController.updateSecuritySettings);
 
+/**
+ * @route   PUT /api/institution-admin/profile
+ * @desc    Update institution admin profile
+ * @access  Private (Institution Admin)
+ */
+router.put('/profile', verifyInstitutionAdmin, institutionAdminController.updateProfile);
+
+/**
+ * @route   PUT /api/institution-admin/change-password
+ * @desc    Change institution admin password
+ * @access  Private (Institution Admin)
+ */
+router.put('/change-password', verifyInstitutionAdmin, institutionAdminController.changePassword);
+
+/**
+ * @route   POST /api/institution-admin/subscription/renew
+ * @desc    Create payment order for subscription renewal
+ * @access  Private (Institution Admin)
+ */
+router.post('/subscription/renew', verifyInstitutionAdmin, institutionAdminController.createSubscriptionRenewalOrder);
+
+/**
+ * @route   POST /api/institution-admin/subscription/verify-renewal
+ * @desc    Verify payment and renew subscription
+ * @access  Private (Institution Admin)
+ */
+router.post('/subscription/verify-renewal', verifyInstitutionAdmin, institutionAdminController.verifySubscriptionRenewal);
+
 module.exports = router;
 

@@ -1,39 +1,38 @@
-import { useEffect } from 'react';
+import { useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import Landing from './components/pages/Landing';
-import Login from './components/Login';
-import Register from './components/Register';
-import ForgotPassword from './components/ForgotPassword';
-import VerifyOTP from './components/VerifyOTP';
-import ResetPassword from './components/ResetPassword';
-import Dashboard from './components/Dashboard';
-import Presentation from './components/pages/Presentation';
-import PresentMode from './components/pages/PresentMode';
-import JoinPresentation from './components/pages/JoinPresentation';
-import PricingPage from './components/pages/PricingPage.jsx';
-import About from './components/pages/About';
-import Careers from './components/pages/Careers';
-import Contact from './components/pages/Contact';
-import PrivacyPolicy from './components/pages/PrivacyPolicy';
-import TermsOfService from './components/pages/TermsOfService';
-import SuperAdmin from './components/pages/SuperAdmin';
-import InstitutionAdmin from './components/pages/InstitutionAdmin';
-import InstitutionRegister from './components/pages/InstitutionRegister';
+import LoadingSpinner from './components/common/LoadingSpinner';
 import './index.css';
 import { useTranslation } from 'react-i18next';
+
+// Lazy load all route components for code splitting
+const Landing = lazy(() => import('./components/pages/Landing'));
+const Login = lazy(() => import('./components/Login'));
+const Register = lazy(() => import('./components/Register'));
+const ForgotPassword = lazy(() => import('./components/ForgotPassword'));
+const VerifyOTP = lazy(() => import('./components/VerifyOTP'));
+const ResetPassword = lazy(() => import('./components/ResetPassword'));
+const Dashboard = lazy(() => import('./components/Dashboard'));
+const Presentation = lazy(() => import('./components/pages/Presentation'));
+const PresentMode = lazy(() => import('./components/pages/PresentMode'));
+const JoinPresentation = lazy(() => import('./components/pages/JoinPresentation'));
+const PricingPage = lazy(() => import('./components/pages/PricingPage.jsx'));
+const About = lazy(() => import('./components/pages/About'));
+const Careers = lazy(() => import('./components/pages/Careers'));
+const Contact = lazy(() => import('./components/pages/Contact'));
+const PrivacyPolicy = lazy(() => import('./components/pages/PrivacyPolicy'));
+const TermsOfService = lazy(() => import('./components/pages/TermsOfService'));
+const SuperAdmin = lazy(() => import('./components/pages/SuperAdmin'));
+const InstitutionAdmin = lazy(() => import('./components/InstitutionAdmin/InstitutionAdmin'));
+const InstitutionRegister = lazy(() => import('./components/pages/InstitutionRegister'));
 
 // Protected Route Component
 function ProtectedRoute({ children }) {
   const { currentUser, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl text-gray-600">Loading...</div>
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   // Allow access if user is authenticated (Firebase) OR if they have institution admin token
@@ -49,11 +48,7 @@ function PublicRoute({ children }) {
   const from = location.state?.from || '/dashboard';
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl text-gray-600">Loading...</div>
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   return currentUser ? <Navigate to={from} replace /> : children;
@@ -128,28 +123,30 @@ function App() {
         <Router>
           <ScrollToTop />
           <PageTitleUpdater />
-          <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/login" element={<PublicRoute> <Login /> </PublicRoute>} />
-            <Route path="/register" element={<PublicRoute> <Register /> </PublicRoute>} />
-            <Route path="/forgot-password" element={<PublicRoute> <ForgotPassword /> </PublicRoute>} />
-            <Route path="/verify-otp" element={<PublicRoute> <VerifyOTP /> </PublicRoute>} />
-            <Route path="/reset-password" element={<PublicRoute> <ResetPassword /> </PublicRoute>} />
-            <Route path="/dashboard" element={<ProtectedRoute> <Dashboard /> </ProtectedRoute>} />
-            <Route path="/presentation/:id" element={<ProtectedRoute> <Presentation /> </ProtectedRoute>} />
-            <Route path="/present/:id" element={<ProtectedRoute> <PresentMode /> </ProtectedRoute>} />
-            <Route path="/join/:code" element={<JoinPresentation />} />
-            <Route path="/pricing" element={<PricingPage />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/careers" element={<Careers />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-            <Route path="/terms-of-service" element={<TermsOfService />} />
-            <Route path="/super-admin" element={<SuperAdmin />} />
-            <Route path="/institution-admin" element={<InstitutionAdmin />} />
-            <Route path="/institution/register" element={<InstitutionRegister />} />
-            <Route path="/institution/register/verify" element={<InstitutionRegister />} />
-          </Routes>
+          <Suspense fallback={<LoadingSpinner />}>
+            <Routes>
+              <Route path="/" element={<Landing />} />
+              <Route path="/login" element={<PublicRoute> <Login /> </PublicRoute>} />
+              <Route path="/register" element={<PublicRoute> <Register /> </PublicRoute>} />
+              <Route path="/forgot-password" element={<PublicRoute> <ForgotPassword /> </PublicRoute>} />
+              <Route path="/verify-otp" element={<PublicRoute> <VerifyOTP /> </PublicRoute>} />
+              <Route path="/reset-password" element={<PublicRoute> <ResetPassword /> </PublicRoute>} />
+              <Route path="/dashboard" element={<ProtectedRoute> <Dashboard /> </ProtectedRoute>} />
+              <Route path="/presentation/:id" element={<ProtectedRoute> <Presentation /> </ProtectedRoute>} />
+              <Route path="/present/:id" element={<ProtectedRoute> <PresentMode /> </ProtectedRoute>} />
+              <Route path="/join/:code" element={<JoinPresentation />} />
+              <Route path="/pricing" element={<PricingPage />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/careers" element={<Careers />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+              <Route path="/terms-of-service" element={<TermsOfService />} />
+              <Route path="/super-admin" element={<SuperAdmin />} />
+              <Route path="/institution-admin" element={<InstitutionAdmin />} />
+              <Route path="/institution/register" element={<InstitutionRegister />} />
+              <Route path="/institution/register/verify" element={<InstitutionRegister />} />
+            </Routes>
+          </Suspense>
         </Router>
       </AuthProvider>
       <Toaster

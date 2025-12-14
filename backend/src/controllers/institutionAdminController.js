@@ -1877,6 +1877,389 @@ const verifyAdditionalUsersPayment = asyncHandler(async (req, res, next) => {
   });
 });
 
+// Institution Plans (matching institutionRegistrationController)
+const INSTITUTION_PLANS = {
+  'basic': {
+    name: 'Basic',
+    maxUsers: 10,
+    price: { yearly: 548900 }, // ₹5489/yr in paise
+    badge: 'Popular',
+    features: ['Custom Branding', 'Advanced Analytics', 'AI Features', 'API Access', 'Bulk User Management', 'Detailed Export Results']
+  },
+  'professional': {
+    name: 'Professional',
+    maxUsers: 50,
+    price: { yearly: 2544900 }, // ₹25449/yr in paise
+    badge: 'High Demand',
+    features: ['Custom Branding', 'Advanced Analytics', 'AI Features', 'API Access', 'Bulk User Management', 'Detailed Export Results']
+  },
+  'enterprise': {
+    name: 'Custom',
+    maxUsers: null, // Unlimited for custom plan
+    price: { yearly: 49900, perUser: 49900 }, // Base ₹499/yr + ₹499 per user (in paise)
+    badge: 'Custom',
+    isCustom: true,
+    minUsers: 10,
+    features: ['Custom Branding', 'Advanced Analytics', 'AI Features', 'API Access', 'Bulk User Management', 'Detailed Export Results']
+  }
+};
+
+/**
+ * Create Payment Order for Subscription Renewal/Upgrade
+ * @route POST /api/institution-admin/subscription/renew
+ * @access Private (Institution Admin)
+ */
+const createSubscriptionRenewalOrder = asyncHandler(async (req, res, next) => {
+  const institutionId = req.institutionId;
+  const { billingCycle = 'yearly', plan, customUserCount } = req.body;
+
+  const institution = await Institution.findById(institutionId);
+  if (!institution) {
+    throw new AppError('Institution not found', 404, 'RESOURCE_NOT_FOUND');
+  }
+
+  // Check if Razorpay is configured
+  if (!razorpay) {
+    const hasKeyId = !!process.env.RAZORPAY_KEY_ID;
+    const hasKeySecret = !!process.env.RAZORPAY_KEY_SECRET;
+    
+    if (!hasKeyId || !hasKeySecret) {
+      throw new AppError('Payment gateway is not configured. Razorpay keys are missing. Please contact support.', 500, 'PAYMENT_CONFIG_ERROR');
+    } else {
+      throw new AppError('Payment gateway initialization failed. Please contact support.', 500, 'PAYMENT_CONFIG_ERROR');
+    }
+  }
+
+  // Calculate amount based on selected plan or use current plan
+  let amount = 548900; // Default: Basic plan price
+  let selectedPlanDetails = null;
+  let maxUsers = institution.subscription.maxUsers || 10;
+
+  if (plan && INSTITUTION_PLANS[plan]) {
+    selectedPlanDetails = INSTITUTION_PLANS[plan];
+    
+    if (selectedPlanDetails.isCustom) {
+      // Custom plan: base price + per user price
+      const userCount = customUserCount || selectedPlanDetails.minUsers || 10;
+      if (userCount < selectedPlanDetails.minUsers) {
+        throw new AppError(`Minimum ${selectedPlanDetails.minUsers} users required for Custom plan`, 400, 'VALIDATION_ERROR');
+      }
+      amount = selectedPlanDetails.price.yearly + ((userCount - selectedPlanDetails.minUsers) * selectedPlanDetails.price.perUser);
+      maxUsers = userCount;
+    } else {
+      // Fixed plans
+      amount = selectedPlanDetails.price[billingCycle] || selectedPlanDetails.price.yearly;
+      maxUsers = selectedPlanDetails.maxUsers;
+    }
+  } else if (plan) {
+    throw new AppError('Invalid plan selected', 400, 'VALIDATION_ERROR');
+  }
+
+  // Create Razorpay order
+  const options = {
+    amount: amount,
+    currency: 'INR',
+    receipt: `inst_renewal_${institutionId}_${Date.now()}`,
+    notes: {
+      institutionId: institutionId.toString(),
+      type: plan ? 'subscription_upgrade' : 'subscription_renewal',
+      billingCycle: billingCycle,
+      plan: plan || null,
+      maxUsers: maxUsers,
+      customUserCount: selectedPlanDetails?.isCustom ? customUserCount : null
+    }
+  };
+
+  try {
+    const order = await razorpay.orders.create(options);
+
+    res.status(200).json({
+      success: true,
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      keyId: process.env.RAZORPAY_KEY_ID,
+      billingCycle: billingCycle,
+      plan: plan || null,
+      maxUsers: maxUsers
+    });
+  } catch (error) {
+    Logger.error('Razorpay order creation failed for subscription renewal', error);
+    
+    if (error.error?.description) {
+      throw new AppError(`Payment gateway error: ${error.error.description}`, 500, 'PAYMENT_ERROR');
+    } else if (error.message) {
+      throw new AppError(`Payment error: ${error.message}`, 500, 'PAYMENT_ERROR');
+    } else {
+      throw new AppError('Failed to create payment order. Please check your payment configuration and try again.', 500, 'PAYMENT_ERROR');
+    }
+  }
+});
+
+/**
+ * Verify Payment and Renew Subscription
+ * @route POST /api/institution-admin/subscription/verify-renewal
+ * @access Private (Institution Admin)
+ */
+const verifySubscriptionRenewal = asyncHandler(async (req, res, next) => {
+  const institutionId = req.institutionId;
+  const {
+    razorpayOrderId,
+    razorpayPaymentId,
+    razorpaySignature
+  } = req.body;
+
+  if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
+    throw new AppError('Payment verification details are required', 400, 'VALIDATION_ERROR');
+  }
+
+  const institution = await Institution.findById(institutionId);
+  if (!institution) {
+    throw new AppError('Institution not found', 404, 'RESOURCE_NOT_FOUND');
+  }
+
+  // Verify payment signature
+  const body = razorpayOrderId + '|' + razorpayPaymentId;
+  const expectedSignature = crypto
+    .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+    .update(body.toString())
+    .digest('hex');
+
+  if (expectedSignature !== razorpaySignature) {
+    throw new AppError('Invalid payment signature. Payment verification failed.', 400, 'INVALID_PAYMENT');
+  }
+
+  // Check if payment already processed
+  const existingPayment = await Payment.findOne({ razorpayOrderId });
+  if (existingPayment && existingPayment.status === 'captured') {
+    throw new AppError('Payment already processed', 400, 'PAYMENT_ALREADY_PROCESSED');
+  }
+
+  // Fetch order details from Razorpay to get amount and plan info
+  let orderAmount = 0;
+  let planFromOrder = null;
+  let maxUsersFromOrder = institution.subscription.maxUsers || 10;
+  let customUserCountFromOrder = null;
+  
+  try {
+    const order = await razorpay.orders.fetch(razorpayOrderId);
+    orderAmount = order.amount;
+    
+    // Extract plan info from order notes
+    if (order.notes) {
+      planFromOrder = order.notes.plan || null;
+      maxUsersFromOrder = order.notes.maxUsers ? parseInt(order.notes.maxUsers) : maxUsersFromOrder;
+      customUserCountFromOrder = order.notes.customUserCount ? parseInt(order.notes.customUserCount) : null;
+    }
+  } catch (error) {
+    Logger.error('Error fetching Razorpay order', error);
+    // Use default amount if fetch fails
+    orderAmount = 548900; // Default renewal price
+  }
+
+  // Calculate new subscription dates
+  const now = new Date();
+  const isUpgrade = planFromOrder && planFromOrder !== null;
+  const startDate = institution.subscription.endDate && new Date(institution.subscription.endDate) > now && !isUpgrade
+    ? institution.subscription.endDate 
+    : now;
+  
+  const endDate = new Date(startDate);
+  endDate.setFullYear(endDate.getFullYear() + 1); // Add 1 year
+
+  // Update institution subscription
+  institution.subscription.status = 'active';
+  institution.subscription.startDate = startDate;
+  institution.subscription.endDate = endDate;
+  institution.subscription.billingCycle = 'yearly';
+  institution.subscription.maxUsers = maxUsersFromOrder; // Update max users if plan changed
+  institution.subscription.razorpayOrderId = razorpayOrderId;
+  institution.subscription.razorpayPaymentId = razorpayPaymentId;
+  
+  await institution.save();
+
+  // Update all institution users' plans
+  await updateInstitutionUsersPlans(institutionId, true);
+
+  // Save payment record
+  const payment = new Payment({
+    userId: null, // Institution payment
+    institutionId: institutionId,
+    amount: orderAmount / 100, // Convert from paise to rupees
+    currency: 'INR',
+    status: 'captured',
+    plan: 'institution_renewal',
+    razorpayOrderId,
+    razorpayPaymentId,
+    razorpaySignature,
+    metadata: {
+      type: isUpgrade ? 'subscription_upgrade' : 'subscription_renewal',
+      billingCycle: 'yearly',
+      newEndDate: endDate,
+      plan: planFromOrder,
+      maxUsers: maxUsersFromOrder
+    }
+  });
+  await payment.save();
+
+  // Log audit
+  if (!institution.auditLogs) {
+    institution.auditLogs = [];
+  }
+  const actionType = isUpgrade ? 'subscription_upgraded' : 'subscription_renewed';
+  const actionMessage = isUpgrade 
+    ? `Subscription upgraded to ${maxUsersFromOrder} users. New end date: ${endDate.toLocaleDateString()}. Payment ID: ${razorpayPaymentId}`
+    : `Subscription renewed. New end date: ${endDate.toLocaleDateString()}. Payment ID: ${razorpayPaymentId}`;
+  
+  institution.auditLogs.push({
+    timestamp: new Date(),
+    action: actionType,
+    user: req.institutionAdmin?.email || institution.adminEmail || 'System',
+    details: actionMessage,
+    ipAddress: req.ip || req.headers['x-forwarded-for'] || 'unknown'
+  });
+  await institution.save();
+
+  res.status(200).json({
+    success: true,
+    message: isUpgrade ? 'Subscription upgraded successfully' : 'Subscription renewed successfully',
+    data: {
+      subscription: {
+        status: institution.subscription.status,
+        startDate: institution.subscription.startDate,
+        endDate: institution.subscription.endDate,
+        billingCycle: institution.subscription.billingCycle,
+        maxUsers: institution.subscription.maxUsers
+      },
+      paymentId: razorpayPaymentId
+    }
+  });
+});
+
+/**
+ * Update Institution Admin Profile
+ * @route PUT /api/institution-admin/profile
+ * @access Private (Institution Admin)
+ */
+const updateProfile = asyncHandler(async (req, res, next) => {
+  const institutionId = req.institutionId;
+  const { adminName, adminEmail } = req.body;
+
+  const institution = await Institution.findById(institutionId);
+  if (!institution) {
+    throw new AppError('Institution not found', 404, 'RESOURCE_NOT_FOUND');
+  }
+
+  // Validate email format if provided
+  if (adminEmail) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(adminEmail)) {
+      throw new AppError('Invalid email format', 400, 'VALIDATION_ERROR');
+    }
+
+    // Check if email is already in use by another institution
+    const existingInstitution = await Institution.findOne({
+      adminEmail: adminEmail.toLowerCase().trim(),
+      _id: { $ne: institutionId }
+    });
+
+    if (existingInstitution) {
+      throw new AppError('Email is already in use by another institution', 400, 'DUPLICATE_ENTRY');
+    }
+  }
+
+  // Update fields
+  if (adminName !== undefined) institution.adminName = adminName.trim();
+  if (adminEmail !== undefined) institution.adminEmail = adminEmail.toLowerCase().trim();
+
+  await institution.save();
+
+  // Log audit
+  if (!institution.auditLogs) {
+    institution.auditLogs = [];
+  }
+  institution.auditLogs.push({
+    timestamp: new Date(),
+    action: 'profile_updated',
+    user: req.institutionAdmin?.email || institution.adminEmail || 'System',
+    details: `Profile updated: ${adminName ? `Name: ${adminName}` : ''} ${adminEmail ? `Email: ${adminEmail}` : ''}`,
+    ipAddress: req.ip || req.headers['x-forwarded-for'] || 'unknown'
+  });
+  await institution.save();
+
+  res.status(200).json({
+    success: true,
+    message: 'Profile updated successfully',
+    data: {
+      institution: {
+        id: institution._id,
+        name: institution.name,
+        email: institution.email,
+        adminEmail: institution.adminEmail,
+        adminName: institution.adminName
+      }
+    }
+  });
+});
+
+/**
+ * Change Institution Admin Password
+ * @route PUT /api/institution-admin/change-password
+ * @access Private (Institution Admin)
+ */
+const changePassword = asyncHandler(async (req, res, next) => {
+  const institutionId = req.institutionId;
+  const { currentPassword, newPassword } = req.body;
+
+  if (!currentPassword || !newPassword) {
+    throw new AppError('Current password and new password are required', 400, 'VALIDATION_ERROR');
+  }
+
+  if (newPassword.length < 8) {
+    throw new AppError('New password must be at least 8 characters long', 400, 'VALIDATION_ERROR');
+  }
+
+  const institution = await Institution.findById(institutionId);
+  if (!institution) {
+    throw new AppError('Institution not found', 404, 'RESOURCE_NOT_FOUND');
+  }
+
+  // Verify current password
+  let isPasswordValid = false;
+  if (institution.password && institution.password.startsWith('$2')) {
+    isPasswordValid = await bcrypt.compare(currentPassword, institution.password);
+  } else {
+    isPasswordValid = currentPassword === institution.password;
+  }
+
+  if (!isPasswordValid) {
+    throw new AppError('Current password is incorrect', 401, 'UNAUTHORIZED');
+  }
+
+  // Hash and update password
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  institution.password = hashedPassword;
+  await institution.save();
+
+  // Log audit
+  if (!institution.auditLogs) {
+    institution.auditLogs = [];
+  }
+  institution.auditLogs.push({
+    timestamp: new Date(),
+    action: 'password_changed',
+    user: req.institutionAdmin?.email || institution.adminEmail || 'System',
+    details: 'Password changed successfully',
+    ipAddress: req.ip || req.headers['x-forwarded-for'] || 'unknown'
+  });
+  await institution.save();
+
+  res.status(200).json({
+    success: true,
+    message: 'Password changed successfully'
+  });
+});
+
 module.exports = {
   loginInstitutionAdmin,
   checkInstitutionAdmin,
@@ -1907,6 +2290,10 @@ module.exports = {
   updateSecuritySettings,
   validateUsersBeforePayment,
   createAdditionalUsersPaymentOrder,
-  verifyAdditionalUsersPayment
+  verifyAdditionalUsersPayment,
+  createSubscriptionRenewalOrder,
+  verifySubscriptionRenewal,
+  updateProfile,
+  changePassword
 };
 
