@@ -16,6 +16,7 @@ import {
     AlertCircle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { getBrandingColors, getRgbaColor, hexToRgb } from '../utils/brandingColors';
 
 const Settings = ({ 
     settings, 
@@ -28,6 +29,7 @@ const Settings = ({
     institution
 }) => {
     const { t } = useTranslation();
+    const { primaryColor, secondaryColor } = getBrandingColors(institution);
     const [activeTab, setActiveTab] = useState('general');
 
     // Initialize settings from institution when available
@@ -83,8 +85,8 @@ const Settings = ({
         <div className="flex items-start justify-between p-4 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors">
             <div className="flex items-start gap-3 flex-1">
                 {Icon && (
-                    <div className="p-2 bg-teal-500/20 rounded-lg mt-0.5">
-                        <Icon className="w-4 h-4 text-teal-400" />
+                    <div className="p-2 rounded-lg mt-0.5" style={{ backgroundColor: getRgbaColor(secondaryColor, 0.2) }}>
+                        <Icon className="w-4 h-4" style={{ color: secondaryColor }} />
                     </div>
                 )}
                 <div className="flex-1">
@@ -99,9 +101,16 @@ const Settings = ({
             <button
                 type="button"
                 onClick={() => onChange(!enabled)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 focus:ring-offset-[#0f172a] ${
-                    enabled ? 'bg-teal-500' : 'bg-gray-600'
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0f172a] ${
+                    enabled ? '' : 'bg-gray-600'
                 }`}
+                style={enabled ? { backgroundColor: secondaryColor } : {}}
+                onFocus={(e) => {
+                    e.target.style.boxShadow = `0 0 0 2px ${getRgbaColor(secondaryColor, 0.2)}`;
+                }}
+                onBlur={(e) => {
+                    e.target.style.boxShadow = 'none';
+                }}
             >
                 <span
                     className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
@@ -133,9 +142,13 @@ const Settings = ({
                     onClick={() => setActiveTab('general')}
                     className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
                         activeTab === 'general'
-                            ? 'text-teal-400 border-teal-400'
+                            ? ''
                             : 'text-gray-400 border-transparent hover:text-white'
                     }`}
+                    style={activeTab === 'general' ? {
+                        color: secondaryColor,
+                        borderColor: secondaryColor
+                    } : {}}
                 >
                     <div className="flex items-center gap-2">
                         <SettingsIcon className="w-4 h-4" />
@@ -146,9 +159,13 @@ const Settings = ({
                     onClick={() => setActiveTab('security')}
                     className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
                         activeTab === 'security'
-                            ? 'text-teal-400 border-teal-400'
+                            ? ''
                             : 'text-gray-400 border-transparent hover:text-white'
                     }`}
+                    style={activeTab === 'security' ? {
+                        color: secondaryColor,
+                        borderColor: secondaryColor
+                    } : {}}
                 >
                     <div className="flex items-center gap-2">
                         <Shield className="w-4 h-4" />
@@ -203,7 +220,19 @@ const Settings = ({
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="flex items-center gap-2 px-6 py-3 bg-teal-500 hover:bg-teal-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex items-center gap-2 px-6 py-3 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                style={{ backgroundColor: secondaryColor }}
+                                onMouseEnter={(e) => {
+                                    if (!e.target.disabled) {
+                                        const rgb = hexToRgb(secondaryColor);
+                                        if (rgb) {
+                                            e.target.style.backgroundColor = `rgb(${Math.max(0, rgb.r - 20)}, ${Math.max(0, rgb.g - 20)}, ${Math.max(0, rgb.b - 20)})`;
+                                        }
+                                    }
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.target.style.backgroundColor = secondaryColor;
+                                }}
                             >
                                 <Save className="w-4 h-4" />
                                 {loading ? (t('institution_admin.saving') || 'Saving...') : (t('institution_admin.save_settings') || 'Save Settings')}
@@ -223,8 +252,8 @@ const Settings = ({
                     {/* Two-Factor Authentication */}
                     <div className="bg-white/5 border border-white/10 rounded-xl p-6 backdrop-blur-sm">
                         <div className="flex items-center gap-3 mb-4">
-                            <div className="p-2 bg-blue-500/20 rounded-lg">
-                                <Lock className="w-5 h-5 text-blue-400" />
+                            <div className="p-2 rounded-lg" style={{ backgroundColor: getRgbaColor(primaryColor, 0.2) }}>
+                                <Lock className="w-5 h-5" style={{ color: primaryColor }} />
                             </div>
                             <div>
                                 <h3 className="text-lg font-semibold text-white">
@@ -271,7 +300,15 @@ const Settings = ({
                                         max="32"
                                         value={securitySettings.passwordMinLength}
                                         onChange={(e) => handleSecuritySettingChange('passwordMinLength', parseInt(e.target.value))}
-                                        className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                        className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none"
+                                        onFocus={(e) => {
+                                            e.target.style.borderColor = secondaryColor;
+                                            e.target.style.boxShadow = `0 0 0 2px ${getRgbaColor(secondaryColor, 0.2)}`;
+                                        }}
+                                        onBlur={(e) => {
+                                            e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                                            e.target.style.boxShadow = 'none';
+                                        }}
                                     />
                                 </div>
 
@@ -335,7 +372,15 @@ const Settings = ({
                                     step="5"
                                     value={securitySettings.sessionTimeout}
                                     onChange={(e) => handleSecuritySettingChange('sessionTimeout', parseInt(e.target.value))}
-                                    className="w-32 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                    className="w-32 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none"
+                                    onFocus={(e) => {
+                                        e.target.style.borderColor = secondaryColor;
+                                        e.target.style.boxShadow = `0 0 0 2px ${getRgbaColor(secondaryColor, 0.2)}`;
+                                    }}
+                                    onBlur={(e) => {
+                                        e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                                        e.target.style.boxShadow = 'none';
+                                    }}
                                 />
                                 <span className="text-gray-400">
                                     {securitySettings.sessionTimeout === 1 
@@ -375,7 +420,19 @@ const Settings = ({
                         <button
                             onClick={handleSecuritySettingsSubmit}
                             disabled={loading}
-                            className="flex items-center gap-2 px-6 py-3 bg-teal-500 hover:bg-teal-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="flex items-center gap-2 px-6 py-3 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            style={{ backgroundColor: secondaryColor }}
+                            onMouseEnter={(e) => {
+                                if (!e.target.disabled) {
+                                    const rgb = hexToRgb(secondaryColor);
+                                    if (rgb) {
+                                        e.target.style.backgroundColor = `rgb(${Math.max(0, rgb.r - 20)}, ${Math.max(0, rgb.g - 20)}, ${Math.max(0, rgb.b - 20)})`;
+                                    }
+                                }
+                            }}
+                            onMouseLeave={(e) => {
+                                e.target.style.backgroundColor = secondaryColor;
+                            }}
                         >
                             <Save className="w-4 h-4" />
                             {loading ? (t('institution_admin.saving') || 'Saving...') : (t('institution_admin.save_security_settings') || 'Save Security Settings')}

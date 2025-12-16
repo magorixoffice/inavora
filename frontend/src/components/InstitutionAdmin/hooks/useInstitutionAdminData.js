@@ -36,8 +36,7 @@ export const useInstitutionAdminData = ({ adminUserId, fetchStats }) => {
     const [branding, setBranding] = useState({
         primaryColor: '#3b82f6',
         secondaryColor: '#14b8a6',
-        logoUrl: '',
-        customDomain: ''
+        logoUrl: ''
     });
     
     // Settings state
@@ -174,6 +173,22 @@ export const useInstitutionAdminData = ({ adminUserId, fetchStats }) => {
             toast.error(translateError(error, t, 'institution_admin.fetch_audit_logs_error'));
         } finally {
             setAuditLogsLoading(false);
+        }
+    };
+
+    // Fetch Branding
+    const fetchBranding = async () => {
+        try {
+            const response = await api.get('/institution-admin/verify');
+            if (response.data.success && response.data.institution?.branding) {
+                setBranding({
+                    primaryColor: response.data.institution.branding.primaryColor || '#3b82f6',
+                    secondaryColor: response.data.institution.branding.secondaryColor || '#14b8a6',
+                    logoUrl: response.data.institution.branding.logoUrl || ''
+                });
+            }
+        } catch (error) {
+            console.error('Error fetching branding:', error);
         }
     };
 
@@ -543,14 +558,22 @@ export const useInstitutionAdminData = ({ adminUserId, fetchStats }) => {
         try {
             const response = await api.put('/institution-admin/branding', branding);
             if (response.data.success) {
-                toast.success(t('institution_admin.branding_updated_success'));
+                toast.success(t('institution_admin.branding_updated_success') || 'Branding updated successfully');
                 // Update branding state with response data if provided
                 if (response.data.data?.branding) {
-                    setBranding(response.data.data.branding);
+                    setBranding({
+                        primaryColor: response.data.data.branding.primaryColor || '#3b82f6',
+                        secondaryColor: response.data.data.branding.secondaryColor || '#14b8a6',
+                        logoUrl: response.data.data.branding.logoUrl || '',
+                    });
                 }
+                // Refresh institution data to get updated branding
+                // This will trigger a re-fetch of institution data
+                return true; // Return success to trigger refresh
             }
         } catch (error) {
-            toast.error(translateError(error, t, 'institution_admin.update_branding_error'));
+            toast.error(translateError(error, t, 'institution_admin.update_branding_error') || 'Failed to update branding');
+            return false;
         } finally {
             setLoading(false);
         }
@@ -760,6 +783,7 @@ export const useInstitutionAdminData = ({ adminUserId, fetchStats }) => {
         branding,
         setBranding,
         handleUpdateBranding,
+        fetchBranding,
         
         // Settings
         settings,

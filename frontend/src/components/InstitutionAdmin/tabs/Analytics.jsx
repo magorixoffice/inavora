@@ -20,14 +20,17 @@ import {
     AreaChart,
     Area
 } from 'recharts';
+import { getBrandingColors, getRgbaColor } from '../utils/brandingColors';
 
 const Analytics = ({ 
     analytics, 
     analyticsPeriod, 
     setAnalyticsPeriod, 
-    onFetchAnalytics 
+    onFetchAnalytics,
+    institution
 }) => {
     const { t } = useTranslation();
+    const { primaryColor, secondaryColor } = getBrandingColors(institution);
 
     useEffect(() => {
         onFetchAnalytics();
@@ -50,7 +53,15 @@ const Analytics = ({
                     onChange={(e) => {
                         setAnalyticsPeriod(e.target.value);
                     }}
-                    className="px-4 py-2.5 bg-black/30 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none text-sm font-medium"
+                    className="px-4 py-2.5 bg-black/30 border border-white/10 rounded-lg text-white outline-none text-sm font-medium"
+                    onFocus={(e) => {
+                        e.target.style.borderColor = secondaryColor;
+                        e.target.style.boxShadow = `0 0 0 2px ${getRgbaColor(secondaryColor, 0.2)}`;
+                    }}
+                    onBlur={(e) => {
+                        e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                        e.target.style.boxShadow = 'none';
+                    }}
                 >
                     <option value="7">{t('institution_admin.period_7_days')}</option>
                     <option value="30">{t('institution_admin.period_30_days')}</option>
@@ -107,8 +118,8 @@ const Analytics = ({
                                             <Area 
                                                 type="monotone" 
                                                 dataKey="count" 
-                                                stroke="#3b82f6" 
-                                                fill="#3b82f6" 
+                                                stroke={primaryColor} 
+                                                fill={primaryColor} 
                                                 fillOpacity={0.3}
                                             />
                                         </AreaChart>
@@ -143,8 +154,8 @@ const Analytics = ({
                                             <Area 
                                                 type="monotone" 
                                                 dataKey="count" 
-                                                stroke="#14b8a6" 
-                                                fill="#14b8a6" 
+                                                stroke={secondaryColor} 
+                                                fill={secondaryColor} 
                                                 fillOpacity={0.3}
                                             />
                                         </AreaChart>
@@ -183,7 +194,7 @@ const Analytics = ({
                                             color: '#fff'
                                         }} 
                                     />
-                                    <Bar dataKey="responses" fill="#14b8a6" radius={[0, 8, 8, 0]} />
+                                    <Bar dataKey="responses" fill={secondaryColor} radius={[0, 8, 8, 0]} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>

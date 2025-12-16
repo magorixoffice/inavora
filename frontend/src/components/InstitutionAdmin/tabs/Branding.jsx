@@ -1,39 +1,49 @@
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
     Palette,
-    Image,
-    Globe,
+    Image as ImageIcon,
     Save,
     Eye,
     Upload,
     X,
     CheckCircle,
-    AlertCircle
+    AlertCircle,
+    Link as LinkIcon
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import api from '../../../config/api';
+import { getRgbaColor, hexToRgb } from '../utils/brandingColors';
 
 const Branding = ({ branding, setBranding, loading, onUpdateBranding, institution }) => {
     const { t } = useTranslation();
+    // Use current branding colors from state for UI elements
+    const primaryColor = branding?.primaryColor || '#3b82f6';
+    const secondaryColor = branding?.secondaryColor || '#14b8a6';
     const [previewMode, setPreviewMode] = useState(false);
     const [logoPreview, setLogoPreview] = useState(null);
     const [logoError, setLogoError] = useState(false);
+    const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+    const [uploadMethod, setUploadMethod] = useState('url'); // 'url' or 'file'
 
     // Initialize branding from institution when available
     useEffect(() => {
         if (institution?.branding) {
-            setBranding({
+            const newBranding = {
                 primaryColor: institution.branding.primaryColor || '#3b82f6',
                 secondaryColor: institution.branding.secondaryColor || '#14b8a6',
-                logoUrl: institution.branding.logoUrl || '',
-                customDomain: institution.branding.customDomain || ''
-            });
+                logoUrl: institution.branding.logoUrl || ''
+            };
+            setBranding(newBranding);
             if (institution.branding.logoUrl) {
                 setLogoPreview(institution.branding.logoUrl);
+            } else {
+                setLogoPreview(null);
             }
         }
-    }, [institution, setBranding]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [institution?.branding?.primaryColor, institution?.branding?.secondaryColor, institution?.branding?.logoUrl]);
 
     // Update logo preview when logoUrl changes
     useEffect(() => {
@@ -69,6 +79,79 @@ const Branding = ({ branding, setBranding, loading, onUpdateBranding, institutio
         setLogoError(false);
     };
 
+    const fileInputRef = useRef(null);
+
+    const handleFileUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Check if file is an image
+        if (!file.type.startsWith('image/')) {
+            toast.error(t('institution_admin.invalid_image_file') || 'Please select an image file');
+            return;
+        }
+
+        // Check file size (max 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+            toast.error(t('institution_admin.image_too_large') || 'Image size must be less than 10MB');
+            return;
+        }
+
+        setIsUploadingLogo(true);
+
+        try {
+            // Convert file to base64
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                try {
+                    const base64Image = event.target.result;
+                    const response = await api.post('/institution-admin/branding/upload-logo', {
+                        image: base64Image
+                    });
+
+                    if (response.data.success) {
+                        setBranding(prev => ({
+                            ...prev,
+                            logoUrl: response.data.data.logoUrl
+                        }));
+                        setLogoPreview(response.data.data.logoUrl);
+                        toast.success(t('institution_admin.logo_uploaded_success') || 'Logo uploaded successfully');
+                    }
+                } catch (error) {
+                    console.error('Upload error:', error);
+                    const errorMessage = error?.response?.data?.error || error?.message || 'Failed to upload logo';
+                    toast.error(errorMessage);
+                } finally {
+                    setIsUploadingLogo(false);
+                    // Reset file input
+                    if (fileInputRef.current) {
+                        fileInputRef.current.value = '';
+                    }
+                }
+            };
+            
+            reader.onerror = () => {
+                toast.error(t('institution_admin.failed_read_image') || 'Failed to read image file');
+                setIsUploadingLogo(false);
+            };
+            
+            reader.readAsDataURL(file);
+        } catch (error) {
+            console.error('Image processing error:', error);
+            toast.error(t('institution_admin.upload_failed') || 'Failed to upload logo');
+            setIsUploadingLogo(false);
+        }
+    };
+
+    const handleRemoveLogo = () => {
+        setBranding(prev => ({
+            ...prev,
+            logoUrl: ''
+        }));
+        setLogoPreview(null);
+        setLogoError(false);
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         
@@ -83,15 +166,6 @@ const Branding = ({ branding, setBranding, loading, onUpdateBranding, institutio
             return;
         }
 
-        // Validate custom domain if provided
-        if (branding.customDomain && branding.customDomain.trim() !== '') {
-            const domainRegex = /^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$/i;
-            if (!domainRegex.test(branding.customDomain.trim())) {
-                toast.error(t('institution_admin.invalid_domain_format') || 'Invalid domain format');
-                return;
-            }
-        }
-
         await onUpdateBranding(e);
     };
 
@@ -99,8 +173,7 @@ const Branding = ({ branding, setBranding, loading, onUpdateBranding, institutio
         setBranding({
             primaryColor: '#3b82f6',
             secondaryColor: '#14b8a6',
-            logoUrl: '',
-            customDomain: ''
+            logoUrl: ''
         });
         setLogoPreview(null);
         setLogoError(false);
@@ -128,7 +201,7 @@ const Branding = ({ branding, setBranding, loading, onUpdateBranding, institutio
                         {/* Primary Color */}
                         <div className="bg-white/5 border border-white/10 rounded-xl p-6 backdrop-blur-sm">
                             <label className="block text-sm font-medium text-white mb-3 flex items-center gap-2">
-                                <Palette className="w-4 h-4 text-teal-400" />
+                                <Palette className="w-4 h-4" style={{ color: secondaryColor }} />
                                 {t('institution_admin.primary_color')}
                             </label>
                             <div className="flex items-center gap-4">
@@ -142,8 +215,16 @@ const Branding = ({ branding, setBranding, loading, onUpdateBranding, institutio
                                     type="text"
                                     value={branding.primaryColor}
                                     onChange={(e) => handleColorChange('primaryColor', e.target.value)}
-                                    className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                    className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none"
                                     placeholder="#3b82f6"
+                                    onFocus={(e) => {
+                                        e.target.style.borderColor = secondaryColor;
+                                        e.target.style.boxShadow = `0 0 0 2px ${getRgbaColor(secondaryColor, 0.2)}`;
+                                    }}
+                                    onBlur={(e) => {
+                                        e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                                        e.target.style.boxShadow = 'none';
+                                    }}
                                 />
                             </div>
                             <p className="text-xs text-gray-400 mt-2">
@@ -154,7 +235,7 @@ const Branding = ({ branding, setBranding, loading, onUpdateBranding, institutio
                         {/* Secondary Color */}
                         <div className="bg-white/5 border border-white/10 rounded-xl p-6 backdrop-blur-sm">
                             <label className="block text-sm font-medium text-white mb-3 flex items-center gap-2">
-                                <Palette className="w-4 h-4 text-teal-400" />
+                                <Palette className="w-4 h-4" style={{ color: secondaryColor }} />
                                 {t('institution_admin.secondary_color')}
                             </label>
                             <div className="flex items-center gap-4">
@@ -168,8 +249,16 @@ const Branding = ({ branding, setBranding, loading, onUpdateBranding, institutio
                                     type="text"
                                     value={branding.secondaryColor}
                                     onChange={(e) => handleColorChange('secondaryColor', e.target.value)}
-                                    className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                    className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none"
                                     placeholder="#14b8a6"
+                                    onFocus={(e) => {
+                                        e.target.style.borderColor = secondaryColor;
+                                        e.target.style.boxShadow = `0 0 0 2px ${getRgbaColor(secondaryColor, 0.2)}`;
+                                    }}
+                                    onBlur={(e) => {
+                                        e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                                        e.target.style.boxShadow = 'none';
+                                    }}
                                 />
                             </div>
                             <p className="text-xs text-gray-400 mt-2">
@@ -180,16 +269,137 @@ const Branding = ({ branding, setBranding, loading, onUpdateBranding, institutio
                         {/* Logo URL */}
                         <div className="bg-white/5 border border-white/10 rounded-xl p-6 backdrop-blur-sm">
                             <label className="block text-sm font-medium text-white mb-3 flex items-center gap-2">
-                                <Image className="w-4 h-4 text-teal-400" />
-                                {t('institution_admin.logo_url')}
+                                <ImageIcon className="w-4 h-4" style={{ color: secondaryColor }} />
+                                {t('institution_admin.logo') || 'Logo'}
                             </label>
-                            <input
-                                type="url"
-                                value={branding.logoUrl}
-                                onChange={handleLogoUrlChange}
-                                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                                placeholder="https://example.com/logo.png"
-                            />
+                            
+                            {/* Upload Method Toggle */}
+                            <div className="flex gap-2 mb-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setUploadMethod('file')}
+                                    className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                        uploadMethod === 'file'
+                                            ? 'text-white'
+                                            : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                                    }`}
+                                    style={uploadMethod === 'file' ? { backgroundColor: secondaryColor } : {}}
+                                >
+                                    <Upload className="w-4 h-4 inline mr-2" />
+                                    {t('institution_admin.upload_file') || 'Upload File'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setUploadMethod('url')}
+                                    className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                        uploadMethod === 'url'
+                                            ? 'text-white'
+                                            : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                                    }`}
+                                    style={uploadMethod === 'url' ? { backgroundColor: secondaryColor } : {}}
+                                >
+                                    <LinkIcon className="w-4 h-4 inline mr-2" />
+                                    {t('institution_admin.add_url') || 'Add URL'}
+                                </button>
+                            </div>
+
+                            {uploadMethod === 'file' ? (
+                                <div className="space-y-3">
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleFileUpload}
+                                        disabled={isUploadingLogo || loading}
+                                        className="hidden"
+                                        id="logo-upload"
+                                    />
+                                    <label
+                                        htmlFor="logo-upload"
+                                        className={`flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+                                            isUploadingLogo || loading
+                                                ? 'border-gray-600 text-gray-500 cursor-not-allowed'
+                                                : ''
+                                        }`}
+                                        style={!(isUploadingLogo || loading) ? {
+                                            borderColor: getRgbaColor(secondaryColor, 0.5),
+                                            color: secondaryColor
+                                        } : {}}
+                                        onMouseEnter={(e) => {
+                                            if (!(isUploadingLogo || loading)) {
+                                                e.target.style.borderColor = secondaryColor;
+                                                e.target.style.backgroundColor = getRgbaColor(secondaryColor, 0.1);
+                                            }
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            if (!(isUploadingLogo || loading)) {
+                                                e.target.style.borderColor = getRgbaColor(secondaryColor, 0.5);
+                                                e.target.style.backgroundColor = 'transparent';
+                                            }
+                                        }}
+                                    >
+                                        {isUploadingLogo ? (
+                                            <>
+                                                <div 
+                                                    className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin"
+                                                    style={{ borderColor: `${secondaryColor} transparent transparent transparent` }}
+                                                ></div>
+                                                <span>{t('institution_admin.uploading') || 'Uploading...'}</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Upload className="w-4 h-4" />
+                                                <span>{t('institution_admin.choose_file') || 'Choose File'}</span>
+                                            </>
+                                        )}
+                                    </label>
+                                    <p className="text-xs text-gray-400">
+                                        {t('institution_admin.max_file_size') || 'Max file size: 10MB (PNG, JPG, SVG)'}
+                                    </p>
+                                    {branding.logoUrl && (
+                                        <button
+                                            type="button"
+                                            onClick={handleRemoveLogo}
+                                            className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
+                                        >
+                                            <X className="w-3 h-3" />
+                                            {t('institution_admin.remove_logo') || 'Remove Logo'}
+                                        </button>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    <input
+                                        type="url"
+                                        value={branding.logoUrl}
+                                        onChange={handleLogoUrlChange}
+                                        disabled={loading}
+                                        className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none disabled:opacity-50"
+                                        onFocus={(e) => {
+                                            if (!e.target.disabled) {
+                                                e.target.style.borderColor = secondaryColor;
+                                                e.target.style.boxShadow = `0 0 0 2px ${getRgbaColor(secondaryColor, 0.2)}`;
+                                            }
+                                        }}
+                                        onBlur={(e) => {
+                                            e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                                            e.target.style.boxShadow = 'none';
+                                        }}
+                                        placeholder="https://example.com/logo.png"
+                                    />
+                                    {branding.logoUrl && (
+                                        <button
+                                            type="button"
+                                            onClick={handleRemoveLogo}
+                                            className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
+                                        >
+                                            <X className="w-3 h-3" />
+                                            {t('institution_admin.remove_logo') || 'Remove Logo'}
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                            
                             <p className="text-xs text-gray-400 mt-2">
                                 {t('institution_admin.logo_url_desc') || 'Enter the URL of your institution logo (PNG, JPG, or SVG)'}
                             </p>
@@ -220,30 +430,24 @@ const Branding = ({ branding, setBranding, loading, onUpdateBranding, institutio
                             )}
                         </div>
 
-                        {/* Custom Domain */}
-                        <div className="bg-white/5 border border-white/10 rounded-xl p-6 backdrop-blur-sm">
-                            <label className="block text-sm font-medium text-white mb-3 flex items-center gap-2">
-                                <Globe className="w-4 h-4 text-teal-400" />
-                                {t('institution_admin.custom_domain')}
-                            </label>
-                            <input
-                                type="text"
-                                value={branding.customDomain}
-                                onChange={(e) => setBranding(prev => ({ ...prev, customDomain: e.target.value }))}
-                                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                                placeholder={t('institution_admin.custom_domain_placeholder')}
-                            />
-                            <p className="text-xs text-gray-400 mt-2">
-                                {t('institution_admin.custom_domain_desc') || 'Optional: Set up a custom domain for your institution presentations (e.g., presentations.yourinstitution.com)'}
-                            </p>
-                        </div>
-
                         {/* Action Buttons */}
                         <div className="flex items-center gap-4">
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="flex items-center gap-2 px-6 py-3 bg-teal-500 hover:bg-teal-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex items-center gap-2 px-6 py-3 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                style={{ backgroundColor: secondaryColor }}
+                                onMouseEnter={(e) => {
+                                    if (!e.target.disabled) {
+                                        const rgb = hexToRgb(secondaryColor);
+                                        if (rgb) {
+                                            e.target.style.backgroundColor = `rgb(${Math.max(0, rgb.r - 20)}, ${Math.max(0, rgb.g - 20)}, ${Math.max(0, rgb.b - 20)})`;
+                                        }
+                                    }
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.target.style.backgroundColor = secondaryColor;
+                                }}
                             >
                                 <Save className="w-4 h-4" />
                                 {loading ? (t('institution_admin.saving') || 'Saving...') : (t('institution_admin.save_branding') || 'Save Branding')}
@@ -267,7 +471,7 @@ const Branding = ({ branding, setBranding, loading, onUpdateBranding, institutio
                     <div className="bg-white/5 border border-white/10 rounded-xl p-6 backdrop-blur-sm sticky top-24">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                                <Eye className="w-5 h-5 text-teal-400" />
+                                <Eye className="w-5 h-5" style={{ color: secondaryColor }} />
                                 {t('institution_admin.preview') || 'Preview'}
                             </h3>
                             <button
@@ -354,21 +558,6 @@ const Branding = ({ branding, setBranding, loading, onUpdateBranding, institutio
                                         {t('institution_admin.sample_secondary') || 'Secondary Action'}
                                     </button>
                                 </div>
-
-                                {/* Custom Domain Info */}
-                                {branding.customDomain && (
-                                    <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <Globe className="w-4 h-4 text-blue-400" />
-                                            <p className="text-sm font-medium text-blue-400">
-                                                {t('institution_admin.custom_domain')}
-                                            </p>
-                                        </div>
-                                        <p className="text-xs text-gray-300 break-all">
-                                            {branding.customDomain}
-                                        </p>
-                                    </div>
-                                )}
 
                                 {/* Info Note */}
                                 <div className="p-3 bg-white/5 border border-white/10 rounded-lg">

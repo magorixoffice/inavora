@@ -2,9 +2,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, User, Mail, Building, Lock, Eye, EyeOff } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useState, useEffect } from 'react';
+import { getBrandingColors, getRgbaColor, hexToRgb } from '../../utils/brandingColors';
 
 const ProfileModal = ({ isOpen, onClose, institution, onUpdateProfile, onChangePassword, loading }) => {
     const { t } = useTranslation();
+    const { primaryColor, secondaryColor } = getBrandingColors(institution);
     const [activeTab, setActiveTab] = useState('profile');
     // Profile data is now read-only, no need for state
     const [passwordData, setPasswordData] = useState({
@@ -167,9 +169,13 @@ const ProfileModal = ({ isOpen, onClose, institution, onUpdateProfile, onChangeP
                                 onClick={() => setActiveTab('profile')}
                                 className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
                                     activeTab === 'profile'
-                                        ? 'text-teal-400 border-teal-400'
+                                        ? ''
                                         : 'text-gray-400 border-transparent hover:text-white'
                                 }`}
+                                style={activeTab === 'profile' ? {
+                                    color: secondaryColor,
+                                    borderColor: secondaryColor
+                                } : {}}
                             >
                                 <div className="flex items-center gap-2">
                                     <User className="w-4 h-4" />
@@ -180,9 +186,13 @@ const ProfileModal = ({ isOpen, onClose, institution, onUpdateProfile, onChangeP
                                 onClick={() => setActiveTab('password')}
                                 className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
                                     activeTab === 'password'
-                                        ? 'text-teal-400 border-teal-400'
+                                        ? ''
                                         : 'text-gray-400 border-transparent hover:text-white'
                                 }`}
+                                style={activeTab === 'password' ? {
+                                    color: secondaryColor,
+                                    borderColor: secondaryColor
+                                } : {}}
                             >
                                 <div className="flex items-center gap-2">
                                     <Lock className="w-4 h-4" />
@@ -212,7 +222,7 @@ const ProfileModal = ({ isOpen, onClose, institution, onUpdateProfile, onChangeP
                                     {/* Admin Name (Read-only) */}
                                     <div>
                                         <label className="block text-sm font-medium text-white mb-2 flex items-center gap-2">
-                                            <User className="w-4 h-4 text-teal-400" />
+                                            <User className="w-4 h-4" style={{ color: secondaryColor }} />
                                             {t('institution_admin.admin_name') || 'Admin Name'}
                                         </label>
                                         <input
@@ -247,7 +257,7 @@ const ProfileModal = ({ isOpen, onClose, institution, onUpdateProfile, onChangeP
                                     {/* Current Password */}
                                     <div>
                                         <label className="block text-sm font-medium text-white mb-2 flex items-center gap-2">
-                                            <Lock className="w-4 h-4 text-teal-400" />
+                                            <Lock className="w-4 h-4" style={{ color: secondaryColor }} />
                                             {t('institution_admin.current_password') || 'Current Password'}
                                         </label>
                                         <div className="relative">
@@ -276,7 +286,7 @@ const ProfileModal = ({ isOpen, onClose, institution, onUpdateProfile, onChangeP
                                     {/* New Password */}
                                     <div>
                                         <label className="block text-sm font-medium text-white mb-2 flex items-center gap-2">
-                                            <Lock className="w-4 h-4 text-teal-400" />
+                                            <Lock className="w-4 h-4" style={{ color: secondaryColor }} />
                                             {t('institution_admin.new_password') || 'New Password'}
                                         </label>
                                         <div className="relative">
@@ -308,7 +318,7 @@ const ProfileModal = ({ isOpen, onClose, institution, onUpdateProfile, onChangeP
                                     {/* Confirm Password */}
                                     <div>
                                         <label className="block text-sm font-medium text-white mb-2 flex items-center gap-2">
-                                            <Lock className="w-4 h-4 text-teal-400" />
+                                            <Lock className="w-4 h-4" style={{ color: secondaryColor }} />
                                             {t('institution_admin.confirm_password') || 'Confirm New Password'}
                                         </label>
                                         <div className="relative">
@@ -338,7 +348,19 @@ const ProfileModal = ({ isOpen, onClose, institution, onUpdateProfile, onChangeP
                                         <button
                                             type="submit"
                                             disabled={loading}
-                                            className="flex items-center gap-2 px-6 py-3 bg-teal-500 hover:bg-teal-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="flex items-center gap-2 px-6 py-3 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            style={{ backgroundColor: secondaryColor }}
+                                            onMouseEnter={(e) => {
+                                                if (!e.target.disabled) {
+                                                    const rgb = hexToRgb(secondaryColor);
+                                                    if (rgb) {
+                                                        e.target.style.backgroundColor = `rgb(${Math.max(0, rgb.r - 20)}, ${Math.max(0, rgb.g - 20)}, ${Math.max(0, rgb.b - 20)})`;
+                                                    }
+                                                }
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.target.style.backgroundColor = secondaryColor;
+                                            }}
                                         >
                                             <Lock className="w-4 h-4" />
                                             {loading ? (t('institution_admin.changing') || 'Changing...') : (t('institution_admin.change_password') || 'Change Password')}

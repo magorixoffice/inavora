@@ -104,6 +104,17 @@ export const useInstitutionAdmin = () => {
         navigate('/login');
     };
 
+    const refreshInstitution = async () => {
+        try {
+            const response = await api.get('/institution-admin/verify');
+            if (response.data.success) {
+                setInstitution(response.data.institution);
+            }
+        } catch (error) {
+            console.error('Error refreshing institution:', error);
+        }
+    };
+
     return {
         isAuthenticated,
         institution,
@@ -112,7 +123,8 @@ export const useInstitutionAdmin = () => {
         adminUserId,
         setLoading,
         fetchStats,
-        handleLogout
+        handleLogout,
+        refreshInstitution
     };
 };
 

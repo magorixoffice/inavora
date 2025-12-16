@@ -19,9 +19,11 @@ import {
     ChevronRight
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { getBrandingColors, getRgbaColor, hexToRgb } from '../utils/brandingColors';
 
-const AuditLogs = ({ auditLogs, auditLogsLoading, dateRange, setDateRange, onFetchAuditLogs }) => {
+const AuditLogs = ({ auditLogs, auditLogsLoading, dateRange, setDateRange, onFetchAuditLogs, institution }) => {
     const { t } = useTranslation();
+    const { primaryColor, secondaryColor } = getBrandingColors(institution);
     const [searchQuery, setSearchQuery] = useState('');
     const [actionFilter, setActionFilter] = useState('all');
     const [showFilters, setShowFilters] = useState(false);
@@ -79,13 +81,24 @@ const AuditLogs = ({ auditLogs, auditLogsLoading, dateRange, setDateRange, onFet
             case 'user_removed':
                 return 'text-red-400 bg-red-500/10 border-red-500/30';
             case 'subscription_renewed':
-                return 'text-blue-400 bg-blue-500/10 border-blue-500/30';
+                return '';
             case 'branding_updated':
             case 'settings_updated':
                 return 'text-purple-400 bg-purple-500/10 border-purple-500/30';
             default:
                 return 'text-gray-400 bg-gray-500/10 border-gray-500/30';
         }
+    };
+    
+    const getActionStyle = (action) => {
+        if (action === 'subscription_renewed') {
+            return {
+                color: primaryColor,
+                backgroundColor: getRgbaColor(primaryColor, 0.1),
+                borderColor: getRgbaColor(primaryColor, 0.3)
+            };
+        }
+        return {};
     };
 
     // Format action label
@@ -240,14 +253,19 @@ const AuditLogs = ({ auditLogs, auditLogsLoading, dateRange, setDateRange, onFet
                             onClick={() => setShowFilters(!showFilters)}
                             className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
                                 showFilters || hasActiveFilters
-                                    ? 'bg-teal-500/20 border-teal-500/30 text-teal-400'
+                                    ? ''
                                     : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
                             }`}
+                            style={(showFilters || hasActiveFilters) ? {
+                                backgroundColor: getRgbaColor(secondaryColor, 0.2),
+                                borderColor: getRgbaColor(secondaryColor, 0.3),
+                                color: secondaryColor
+                            } : {}}
                         >
                             <Filter className="w-4 h-4" />
                             {t('institution_admin.filters') || 'Filters'}
                             {hasActiveFilters && (
-                                <span className="ml-1 px-1.5 py-0.5 bg-teal-500 text-white text-xs rounded-full">
+                                <span className="ml-1 px-1.5 py-0.5 text-white text-xs rounded-full" style={{ backgroundColor: secondaryColor }}>
                                     {[searchQuery, actionFilter !== 'all' ? 1 : 0, dateRange.start ? 1 : 0, dateRange.end ? 1 : 0].filter(Boolean).length}
                                 </span>
                             )}
@@ -265,7 +283,20 @@ const AuditLogs = ({ auditLogs, auditLogsLoading, dateRange, setDateRange, onFet
                         <button
                             onClick={handleExport}
                             disabled={filteredLogs.length === 0}
-                            className="flex items-center gap-2 px-4 py-2 bg-teal-500/20 border border-teal-500/30 rounded-lg text-teal-400 hover:bg-teal-500/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="flex items-center gap-2 px-4 py-2 border rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            style={{
+                                backgroundColor: getRgbaColor(secondaryColor, 0.2),
+                                borderColor: getRgbaColor(secondaryColor, 0.3),
+                                color: secondaryColor
+                            }}
+                            onMouseEnter={(e) => {
+                                if (!e.target.disabled) {
+                                    e.target.style.backgroundColor = getRgbaColor(secondaryColor, 0.3);
+                                }
+                            }}
+                            onMouseLeave={(e) => {
+                                e.target.style.backgroundColor = getRgbaColor(secondaryColor, 0.2);
+                            }}
                         >
                             <Download className="w-4 h-4" />
                             {t('institution_admin.export') || 'Export'}
@@ -351,7 +382,7 @@ const AuditLogs = ({ auditLogs, auditLogsLoading, dateRange, setDateRange, onFet
             <div className="bg-white/5 border border-white/10 rounded-xl backdrop-blur-sm overflow-hidden">
                 {auditLogsLoading ? (
                     <div className="p-12 text-center">
-                        <RefreshCw className="w-8 h-8 mx-auto mb-4 text-teal-400 animate-spin" />
+                        <RefreshCw className="w-8 h-8 mx-auto mb-4 animate-spin" style={{ color: secondaryColor }} />
                         <p className="text-gray-400">{t('institution_admin.loading_audit_logs')}</p>
                     </div>
                 ) : filteredLogs.length === 0 ? (
@@ -366,7 +397,17 @@ const AuditLogs = ({ auditLogs, auditLogsLoading, dateRange, setDateRange, onFet
                         {hasActiveFilters && (
                             <button
                                 onClick={clearFilters}
-                                className="mt-4 text-teal-400 hover:text-teal-300 transition-colors"
+                                className="mt-4 transition-colors"
+                                style={{ color: secondaryColor }}
+                                onMouseEnter={(e) => {
+                                    const rgb = hexToRgb(secondaryColor);
+                                    if (rgb) {
+                                        e.target.style.color = `rgb(${Math.max(0, rgb.r - 30)}, ${Math.max(0, rgb.g - 30)}, ${Math.max(0, rgb.b - 30)})`;
+                                    }
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.target.style.color = secondaryColor;
+                                }}
                             >
                                 {t('institution_admin.clear_filters') || 'Clear Filters'}
                             </button>
@@ -385,7 +426,10 @@ const AuditLogs = ({ auditLogs, auditLogsLoading, dateRange, setDateRange, onFet
                             >
                                 <div className="flex items-start gap-4">
                                     {/* Action Icon */}
-                                    <div className={`flex items-center justify-center w-10 h-10 rounded-lg border ${getActionColor(log.action)} flex-shrink-0`}>
+                                    <div 
+                                        className={`flex items-center justify-center w-10 h-10 rounded-lg border flex-shrink-0 ${getActionColor(log.action)}`}
+                                        style={getActionStyle(log.action)}
+                                    >
                                         {getActionIcon(log.action)}
                                     </div>
 

@@ -150,7 +150,19 @@ const verifyToken = asyncHandler(async (req, res, next) => {
       name: req.institution.name,
       email: req.institution.email,
       adminEmail: req.institution.adminEmail,
-      adminName: req.institution.adminName
+      adminName: req.institution.adminName,
+      branding: req.institution.branding || {
+        primaryColor: '#3b82f6',
+        secondaryColor: '#14b8a6',
+        logoUrl: null,
+        customDomain: null
+      },
+      settings: req.institution.settings || {
+        aiFeaturesEnabled: true,
+        exportEnabled: true,
+        watermarkEnabled: false,
+        analyticsEnabled: true
+      }
     }
   });
 });
@@ -833,6 +845,51 @@ const updateBranding = asyncHandler(async (req, res, next) => {
     message: 'Branding updated successfully',
     data: {
       branding: institution.branding
+    }
+  });
+});
+
+/**
+ * Upload Logo for Institution Branding
+ * @route POST /api/institution-admin/branding/upload-logo
+ * @access Private (Institution Admin)
+ */
+const uploadLogo = asyncHandler(async (req, res, next) => {
+  const institutionId = req.institutionId;
+  const { image } = req.body;
+
+  if (!image) {
+    throw new AppError('Image data is required', 400, 'VALIDATION_ERROR');
+  }
+
+  if (!image.startsWith('data:image/')) {
+    throw new AppError('Invalid image format. Must be base64 encoded image.', 400, 'VALIDATION_ERROR');
+  }
+
+  const sizeInBytes = (image.length * 3) / 4;
+  const sizeInMB = sizeInBytes / (1024 * 1024);
+  
+  if (sizeInMB > 10) {
+    throw new AppError(`Image too large (${sizeInMB.toFixed(1)}MB). Maximum size is 10MB.`, 400, 'VALIDATION_ERROR');
+  }
+
+  const cloudinaryService = require('../services/cloudinaryService');
+  const result = await cloudinaryService.uploadImage(image, 'inavora/institution-logos');
+
+  const institution = await Institution.findById(institutionId);
+  if (!institution) {
+    throw new AppError('Institution not found', 404, 'RESOURCE_NOT_FOUND');
+  }
+
+  institution.branding.logoUrl = result.url;
+  await institution.save();
+
+  res.status(200).json({
+    success: true,
+    message: 'Logo uploaded successfully',
+    data: {
+      logoUrl: result.url,
+      publicId: result.publicId
     }
   });
 });
@@ -2314,6 +2371,7 @@ module.exports = {
   getAdminUserAccount,
   getAnalytics,
   updateBranding,
+  uploadLogo,
   updateSettings,
   exportData,
   generateReport,

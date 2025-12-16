@@ -11,6 +11,7 @@ import {
     Calendar
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { getBrandingColors, getRgbaColor } from '../utils/brandingColors';
 
 const Presentations = ({ 
     presentations, 
@@ -25,10 +26,12 @@ const Presentations = ({
     showMyPresentations, 
     setShowMyPresentations, 
     adminUserId, 
-    onFetchPresentations 
+    onFetchPresentations,
+    institution
 }) => {
     const { t } = useTranslation();
     const navigate = useNavigate();
+    const { primaryColor, secondaryColor } = getBrandingColors(institution);
 
     // Refetch presentations when filters change
     useEffect(() => {
@@ -63,7 +66,15 @@ const Presentations = ({
                                 setCurrentPage(1);
                             }}
                             placeholder={t('institution_admin.search_presentations_placeholder')}
-                            className="w-full pl-10 pr-4 py-2.5 bg-black/30 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all text-sm"
+                            className="w-full pl-10 pr-4 py-2.5 bg-black/30 border border-white/10 rounded-lg text-white outline-none transition-all text-sm"
+                            onFocus={(e) => {
+                                e.target.style.borderColor = secondaryColor;
+                                e.target.style.boxShadow = `0 0 0 2px ${getRgbaColor(secondaryColor, 0.2)}`;
+                            }}
+                            onBlur={(e) => {
+                                e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                                e.target.style.boxShadow = 'none';
+                            }}
                         />
                     </div>
                     <select
@@ -72,7 +83,15 @@ const Presentations = ({
                             setPresentationStatus(e.target.value);
                             setCurrentPage(1);
                         }}
-                        className="px-4 py-2.5 bg-black/30 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all text-sm"
+                        className="px-4 py-2.5 bg-black/30 border border-white/10 rounded-lg text-white outline-none transition-all text-sm"
+                        onFocus={(e) => {
+                            e.target.style.borderColor = secondaryColor;
+                            e.target.style.boxShadow = `0 0 0 2px ${getRgbaColor(secondaryColor, 0.2)}`;
+                        }}
+                        onBlur={(e) => {
+                            e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                            e.target.style.boxShadow = 'none';
+                        }}
                     >
                         <option value="all">{t('institution_admin.all') || 'All'}</option>
                         <option value="live">{t('institution_admin.presentation_status_live')}</option>
@@ -90,9 +109,14 @@ const Presentations = ({
                         disabled={!adminUserId}
                         className={`px-4 py-2.5 border rounded-lg transition-all text-sm flex items-center gap-2 font-medium ${
                             showMyPresentations
-                                ? 'bg-teal-500/20 border-teal-500/30 text-teal-400'
+                                ? ''
                                 : 'bg-white/10 border-white/20 text-white hover:bg-white/20'
                         } ${!adminUserId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        style={showMyPresentations ? {
+                            backgroundColor: getRgbaColor(secondaryColor, 0.2),
+                            borderColor: getRgbaColor(secondaryColor, 0.3),
+                            color: secondaryColor
+                        } : {}}
                         title={!adminUserId ? 'Create a presentation first to enable this filter' : ''}
                     >
                         <UserCheck className="w-4 h-4" />

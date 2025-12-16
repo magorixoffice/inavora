@@ -12,7 +12,6 @@ import {
     Subscription,
     Branding,
     AuditLogs,
-    APIManagement,
     Settings,
     HelpCenter
 } from './tabs';
@@ -20,10 +19,9 @@ import AddUserModal from './components/modals/AddUserModal';
 import PaymentModal from './components/modals/PaymentModal';
 import BulkImportModal from './components/modals/BulkImportModal';
 import ReportsModal from './components/modals/ReportsModal';
-import ApiKeyModal from './components/modals/ApiKeyModal';
-import WebhookModal from './components/modals/WebhookModal';
 import ProfileModal from './components/modals/ProfileModal';
 import { useInstitutionAdminData } from './hooks/useInstitutionAdminData';
+import api from '../../config/api';
 
 const InstitutionAdmin = () => {
     const { t } = useTranslation();
@@ -53,7 +51,8 @@ const InstitutionAdmin = () => {
         loading,
         adminUserId,
         fetchStats,
-        handleLogout
+        handleLogout,
+        refreshInstitution
     } = useInstitutionAdmin();
 
     const {
@@ -103,6 +102,7 @@ const InstitutionAdmin = () => {
         branding,
         setBranding,
         handleUpdateBranding,
+        fetchBranding,
         
         // Settings
         settings,
@@ -111,20 +111,6 @@ const InstitutionAdmin = () => {
         setSecuritySettings,
         handleUpdateSettings,
         handleUpdateSecuritySettings,
-        
-        // API Management
-        apiKeys,
-        webhooks,
-        fetchApiKeys,
-        fetchWebhooks,
-        handleCreateApiKey,
-        handleDeleteApiKey,
-        handleCreateWebhook,
-        handleDeleteWebhook,
-        newApiKey,
-        setNewApiKey,
-        newWebhook,
-        setNewWebhook,
         
         // Modals
         isAddUserModalOpen,
@@ -135,10 +121,6 @@ const InstitutionAdmin = () => {
         setIsBulkImportModalOpen,
         isReportsModalOpen,
         setIsReportsModalOpen,
-        isApiKeyModalOpen,
-        setIsApiKeyModalOpen,
-        isWebhookModalOpen,
-        setIsWebhookModalOpen,
         
         // Payment
         pendingEmails,
@@ -166,6 +148,25 @@ const InstitutionAdmin = () => {
         };
     }, []);
 
+    // Apply branding colors as CSS variables
+    useEffect(() => {
+        if (institution?.branding) {
+            const primaryColor = institution.branding.primaryColor || '#3b82f6';
+            const secondaryColor = institution.branding.secondaryColor || '#14b8a6';
+            
+            // Set CSS variables on the root element
+            document.documentElement.style.setProperty('--institution-primary-color', primaryColor);
+            document.documentElement.style.setProperty('--institution-secondary-color', secondaryColor);
+            
+            // Also set on the main container for scoped usage
+            const mainContainer = document.querySelector('.institution-admin-container');
+            if (mainContainer) {
+                mainContainer.style.setProperty('--primary-color', primaryColor);
+                mainContainer.style.setProperty('--secondary-color', secondaryColor);
+            }
+        }
+    }, [institution?.branding]);
+
     // Update page title based on active tab
     useEffect(() => {
         const tabTitles = {
@@ -176,7 +177,6 @@ const InstitutionAdmin = () => {
             subscription: t('institution_admin.subscription_billing'),
             branding: t('institution_admin.custom_branding'),
             audit: t('institution_admin.audit_logs'),
-            api: t('institution_admin.api_management'),
             settings: t('institution_admin.settings_title'),
             help: t('institution_admin.help_center')
         };
@@ -203,9 +203,8 @@ const InstitutionAdmin = () => {
             fetchAnalytics();
         } else if (activeTab === 'audit') {
             fetchAuditLogs();
-        } else if (activeTab === 'api') {
-            fetchApiKeys();
-            fetchWebhooks();
+        } else if (activeTab === 'branding') {
+            fetchBranding();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeTab, isAuthenticated, currentPage, usersPage, searchQuery, presentationStatus, analyticsPeriod]);
@@ -222,12 +221,37 @@ const InstitutionAdmin = () => {
         );
     }
 
+    // Get branding colors with fallbacks
+    const primaryColor = institution?.branding?.primaryColor || '#3b82f6';
+    const secondaryColor = institution?.branding?.secondaryColor || '#14b8a6';
+    
+    // Convert hex to RGB for opacity usage
+    const hexToRgb = (hex) => {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16)
+        } : null;
+    };
+    
+    const primaryRgb = hexToRgb(primaryColor);
+    const secondaryRgb = hexToRgb(secondaryColor);
+    const primaryBg = primaryRgb ? `rgba(${primaryRgb.r}, ${primaryRgb.g}, ${primaryRgb.b}, 0.2)` : 'rgba(59, 130, 246, 0.2)';
+    const secondaryBg = secondaryRgb ? `rgba(${secondaryRgb.r}, ${secondaryRgb.g}, ${secondaryRgb.b}, 0.1)` : 'rgba(20, 184, 166, 0.1)';
+
     return (
-        <div className="min-h-screen bg-[#0f172a] text-white overflow-x-hidden font-sans scrollbar-hide">
+        <div className="min-h-screen bg-[#0f172a] text-white overflow-x-hidden font-sans scrollbar-hide institution-admin-container">
             {/* Background */}
             <div className="fixed inset-0 z-0 pointer-events-none">
-                <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-600/20 blur-[120px] animate-pulse" />
-                <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-teal-600/10 blur-[120px] animate-pulse delay-1000" />
+                <div 
+                    className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full blur-[120px] animate-pulse" 
+                    style={{ backgroundColor: primaryBg }}
+                />
+                <div 
+                    className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full blur-[120px] animate-pulse delay-1000" 
+                    style={{ backgroundColor: secondaryBg }}
+                />
             </div>
 
             {/* Top Navigation Bar */}
@@ -239,13 +263,14 @@ const InstitutionAdmin = () => {
 
             <div className="flex pt-16 relative z-10">
                 {/* Sidebar Navigation */}
-                <Sidebar activeTab={activeTab} setActiveTab={handleTabChange} />
+                <Sidebar activeTab={activeTab} setActiveTab={handleTabChange} institution={institution} />
 
                 {/* Main Content */}
                 <main className="flex-1 ml-64 p-8 relative z-10">
                     {activeTab === 'dashboard' && (
                         <Dashboard
                             stats={stats}
+                            institution={institution}
                             onAddUser={() => setIsAddUserModalOpen(true)}
                             onExport={handleExport}
                             onSetActiveTab={setActiveTab}
@@ -271,6 +296,7 @@ const InstitutionAdmin = () => {
                             onBulkImport={() => setIsBulkImportModalOpen(true)}
                             onRemoveUser={handleRemoveUser}
                             onFetchUsers={fetchUsers}
+                            institution={institution}
                         />
                     )}
 
@@ -289,6 +315,7 @@ const InstitutionAdmin = () => {
                             setShowMyPresentations={setShowMyPresentations}
                             adminUserId={adminUserId}
                             onFetchPresentations={fetchPresentations}
+                            institution={institution}
                         />
                     )}
 
@@ -298,6 +325,7 @@ const InstitutionAdmin = () => {
                             analyticsPeriod={analyticsPeriod}
                             setAnalyticsPeriod={setAnalyticsPeriod}
                             onFetchAnalytics={fetchAnalytics}
+                            institution={institution}
                         />
                     )}
 
@@ -314,7 +342,13 @@ const InstitutionAdmin = () => {
                             branding={branding}
                             setBranding={setBranding}
                             loading={loading}
-                            onUpdateBranding={handleUpdateBranding}
+                            onUpdateBranding={async (e) => {
+                                const success = await handleUpdateBranding(e);
+                                if (success && refreshInstitution) {
+                                    // Refresh institution data to get updated branding
+                                    await refreshInstitution();
+                                }
+                            }}
                             institution={institution}
                         />
                     )}
@@ -326,22 +360,7 @@ const InstitutionAdmin = () => {
                             dateRange={dateRange}
                             setDateRange={setDateRange}
                             onFetchAuditLogs={fetchAuditLogs}
-                        />
-                    )}
-
-                    {activeTab === 'api' && (
-                        <APIManagement
-                            apiKeys={apiKeys}
-                            webhooks={webhooks}
-                            loading={loading}
-                            onOpenApiKeyModal={() => setIsApiKeyModalOpen(true)}
-                            onOpenWebhookModal={() => setIsWebhookModalOpen(true)}
-                            onCreateApiKey={handleCreateApiKey}
-                            onDeleteApiKey={handleDeleteApiKey}
-                            onCreateWebhook={handleCreateWebhook}
-                            onDeleteWebhook={handleDeleteWebhook}
-                            onFetchApiKeys={fetchApiKeys}
-                            onFetchWebhooks={fetchWebhooks}
+                            institution={institution}
                         />
                     )}
 
@@ -359,7 +378,7 @@ const InstitutionAdmin = () => {
                     )}
 
                     {activeTab === 'help' && (
-                        <HelpCenter />
+                        <HelpCenter institution={institution} />
                     )}
                 </main>
             </div>
@@ -398,24 +417,6 @@ const InstitutionAdmin = () => {
                 onClose={() => setIsReportsModalOpen(false)}
                 onGenerate={() => {}}
                 loading={loading}
-            />
-
-            <ApiKeyModal
-                isOpen={isApiKeyModalOpen}
-                onClose={() => setIsApiKeyModalOpen(false)}
-                onCreate={handleCreateApiKey}
-                loading={loading}
-                newApiKey={newApiKey}
-                setNewApiKey={setNewApiKey}
-            />
-
-            <WebhookModal
-                isOpen={isWebhookModalOpen}
-                onClose={() => setIsWebhookModalOpen(false)}
-                onCreate={handleCreateWebhook}
-                loading={loading}
-                newWebhook={newWebhook}
-                setNewWebhook={setNewWebhook}
             />
 
             <ProfileModal

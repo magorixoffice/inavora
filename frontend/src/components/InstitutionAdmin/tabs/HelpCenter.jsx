@@ -16,9 +16,11 @@ import {
     Settings as SettingsIcon,
     X
 } from 'lucide-react';
+import { getBrandingColors, getRgbaColor, hexToRgb } from '../utils/brandingColors';
 
-const HelpCenter = () => {
+const HelpCenter = ({ institution }) => {
     const { t, i18n } = useTranslation();
+    const { primaryColor, secondaryColor } = getBrandingColors(institution);
     const [searchQuery, setSearchQuery] = useState('');
     const [expandedFaq, setExpandedFaq] = useState(null);
     const [modalContent, setModalContent] = useState(null);
@@ -180,12 +182,30 @@ const HelpCenter = () => {
 
     const getColorClasses = (color) => {
         const colors = {
-            blue: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+            blue: '',
             purple: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-            teal: 'bg-teal-500/20 text-teal-400 border-teal-500/30',
+            teal: '',
             green: 'bg-green-500/20 text-green-400 border-green-500/30'
         };
         return colors[color] || colors.blue;
+    };
+    
+    const getColorStyle = (color) => {
+        if (color === 'blue') {
+            return {
+                backgroundColor: getRgbaColor(primaryColor, 0.2),
+                color: primaryColor,
+                borderColor: getRgbaColor(primaryColor, 0.3)
+            };
+        }
+        if (color === 'teal') {
+            return {
+                backgroundColor: getRgbaColor(secondaryColor, 0.2),
+                color: secondaryColor,
+                borderColor: getRgbaColor(secondaryColor, 0.3)
+            };
+        }
+        return {};
     };
 
     const formatModalContent = (content) => {
@@ -231,7 +251,15 @@ const HelpCenter = () => {
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder={t('institution_admin.search_help')}
-                            className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                            className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none"
+                            onFocus={(e) => {
+                                e.target.style.borderColor = secondaryColor;
+                                e.target.style.boxShadow = `0 0 0 2px ${getRgbaColor(secondaryColor, 0.2)}`;
+                            }}
+                            onBlur={(e) => {
+                                e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                                e.target.style.boxShadow = 'none';
+                            }}
                         />
                     </div>
                 </div>
@@ -283,7 +311,7 @@ const HelpCenter = () => {
                                     className="bg-white/5 border border-white/10 rounded-lg p-4 hover:bg-white/10 transition-all group text-left w-full"
                                 >
                                     <div className="flex items-center gap-3 mb-2">
-                                        <Icon className="w-5 h-5 text-teal-400" />
+                                        <Icon className="w-5 h-5" style={{ color: secondaryColor }} />
                                         <h4 className="font-semibold text-white text-sm">
                                             {link.title}
                                         </h4>
@@ -291,7 +319,16 @@ const HelpCenter = () => {
                                     <p className="text-xs text-gray-400">
                                         {link.description}
                                     </p>
-                                    <Info className="w-4 h-4 text-gray-500 mt-2 group-hover:text-teal-400 transition-colors" />
+                                    <Info 
+                                        className="w-4 h-4 text-gray-500 mt-2 transition-colors" 
+                                        style={{ color: 'rgb(107, 114, 128)' }}
+                                        onMouseEnter={(e) => {
+                                            e.target.style.color = secondaryColor;
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.target.style.color = 'rgb(107, 114, 128)';
+                                        }}
+                                    />
                                 </button>
                             );
                         })}
@@ -350,8 +387,8 @@ const HelpCenter = () => {
                 {/* Contact Support Section */}
                 <div id="contact-section" className="bg-white/5 border border-white/10 rounded-xl p-8">
                     <div className="flex items-start gap-4 mb-6">
-                        <div className="p-3 bg-teal-500/20 rounded-lg">
-                            <Mail className="w-6 h-6 text-teal-400" />
+                        <div className="p-3 rounded-lg" style={{ backgroundColor: getRgbaColor(secondaryColor, 0.2) }}>
+                            <Mail className="w-6 h-6" style={{ color: secondaryColor }} />
                         </div>
                         <div className="flex-1">
                             <h2 className="text-2xl font-bold text-white mb-2">
@@ -362,21 +399,31 @@ const HelpCenter = () => {
                             </p>
                             <div className="space-y-4">
                                 <div className="flex items-center gap-3">
-                                    <Mail className="w-5 h-5 text-teal-400" />
+                                    <Mail className="w-5 h-5" style={{ color: secondaryColor }} />
                                     <div>
                                         <p className="text-sm text-gray-400">
                                             {t('institution_admin.email_support')}
                                         </p>
                                         <a
                                             href="mailto:support@inavora.com"
-                                            className="text-teal-400 hover:text-teal-300 transition-colors"
+                                            className="transition-colors"
+                                            style={{ color: secondaryColor }}
+                                            onMouseEnter={(e) => {
+                                                const rgb = hexToRgb(secondaryColor);
+                                                if (rgb) {
+                                                    e.target.style.color = `rgb(${Math.max(0, rgb.r - 30)}, ${Math.max(0, rgb.g - 30)}, ${Math.max(0, rgb.b - 30)})`;
+                                                }
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.target.style.color = secondaryColor;
+                                            }}
                                         >
                                             support@inavora.com
                                         </a>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <Info className="w-5 h-5 text-teal-400" />
+                                    <Info className="w-5 h-5" style={{ color: secondaryColor }} />
                                     <div>
                                         <p className="text-sm text-gray-400">
                                             {t('institution_admin.response_time')}
@@ -392,7 +439,17 @@ const HelpCenter = () => {
                     <div className="flex gap-4">
                         <a
                             href="mailto:support@inavora.com"
-                            className="flex items-center gap-2 px-6 py-3 bg-teal-500 hover:bg-teal-600 text-white font-medium rounded-lg transition-colors"
+                            className="flex items-center gap-2 px-6 py-3 text-white font-medium rounded-lg transition-colors"
+                            style={{ backgroundColor: secondaryColor }}
+                            onMouseEnter={(e) => {
+                                const rgb = hexToRgb(secondaryColor);
+                                if (rgb) {
+                                    e.target.style.backgroundColor = `rgb(${Math.max(0, rgb.r - 20)}, ${Math.max(0, rgb.g - 20)}, ${Math.max(0, rgb.b - 20)})`;
+                                }
+                            }}
+                            onMouseLeave={(e) => {
+                                e.target.style.backgroundColor = secondaryColor;
+                            }}
                         >
                             <Mail className="w-4 h-4" />
                             {t('institution_admin.contact_us')}
@@ -434,10 +491,10 @@ const HelpCenter = () => {
                             <div className="p-6 border-b border-white/10 flex items-center justify-between sticky top-0 bg-[#1e293b] z-10">
                                 <div className="flex items-center gap-3">
                                     {modalContent.icon && (
-                                        <div className="p-2 bg-teal-500/20 rounded-lg">
+                                        <div className="p-2 rounded-lg" style={{ backgroundColor: getRgbaColor(secondaryColor, 0.2) }}>
                                             {(() => {
                                                 const Icon = modalContent.icon;
-                                                return <Icon className="w-5 h-5 text-teal-400" />;
+                                                return <Icon className="w-5 h-5" style={{ color: secondaryColor }} />;
                                             })()}
                                         </div>
                                     )}
@@ -462,7 +519,17 @@ const HelpCenter = () => {
                             <div className="p-6 border-t border-white/10 flex justify-end">
                                 <button
                                     onClick={closeModal}
-                                    className="px-6 py-2 bg-teal-500 hover:bg-teal-600 text-white font-medium rounded-lg transition-colors"
+                                    className="px-6 py-2 text-white font-medium rounded-lg transition-colors"
+                                    style={{ backgroundColor: secondaryColor }}
+                                    onMouseEnter={(e) => {
+                                        const rgb = hexToRgb(secondaryColor);
+                                        if (rgb) {
+                                            e.target.style.backgroundColor = `rgb(${Math.max(0, rgb.r - 20)}, ${Math.max(0, rgb.g - 20)}, ${Math.max(0, rgb.b - 20)})`;
+                                        }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.target.style.backgroundColor = secondaryColor;
+                                    }}
                                 >
                                     {t('institution_admin.close')}
                                 </button>

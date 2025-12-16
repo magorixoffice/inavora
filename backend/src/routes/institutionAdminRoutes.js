@@ -125,6 +125,13 @@ router.get('/analytics', verifyInstitutionAdmin, institutionAdminController.getA
 router.put('/branding', verifyInstitutionAdmin, institutionAdminController.updateBranding);
 
 /**
+ * @route   POST /api/institution-admin/branding/upload-logo
+ * @desc    Upload logo for institution branding
+ * @access  Private (Institution Admin)
+ */
+router.post('/branding/upload-logo', verifyInstitutionAdmin, institutionAdminController.uploadLogo);
+
+/**
  * @route   PUT /api/institution-admin/settings
  * @desc    Update institution settings
  * @access  Private (Institution Admin)

@@ -18,9 +18,11 @@ import {
 import toast from 'react-hot-toast';
 import api from '../../../config/api';
 import { translateError } from '../../../utils/errorTranslator';
+import { getBrandingColors, getRgbaColor, hexToRgb } from '../utils/brandingColors';
 
 const Subscription = ({ institution, stats, onRefresh }) => {
     const { t } = useTranslation();
+    const { primaryColor, secondaryColor } = getBrandingColors(institution);
     const [renewalLoading, setRenewalLoading] = useState(false);
     const [plans, setPlans] = useState([]);
     const [loadingPlans, setLoadingPlans] = useState(false);
@@ -291,7 +293,7 @@ const Subscription = ({ institution, stats, onRefresh }) => {
                     {/* Plan Details */}
                     <div className="bg-white/5 border border-white/10 rounded-xl p-6 backdrop-blur-sm">
                         <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                            <CreditCard className="w-5 h-5 text-teal-400" />
+                            <CreditCard className="w-5 h-5" style={{ color: secondaryColor }} />
                             {t('institution_admin.current_plan')}
                         </h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -340,7 +342,19 @@ const Subscription = ({ institution, stats, onRefresh }) => {
                                         setShowUpgrade(false);
                                     }}
                                     disabled={renewalLoading}
-                                    className="px-6 py-3 bg-gradient-to-r from-blue-600 to-teal-500 text-white font-semibold rounded-lg hover:shadow-lg hover:shadow-teal-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                    className="px-6 py-3 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                    style={{
+                                        background: `linear-gradient(to right, ${primaryColor}, ${secondaryColor})`,
+                                        boxShadow: `0 10px 15px -3px ${getRgbaColor(secondaryColor, 0.25)}`
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (!e.target.disabled) {
+                                            e.target.style.boxShadow = `0 10px 15px -3px ${getRgbaColor(secondaryColor, 0.4)}`;
+                                        }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.target.style.boxShadow = `0 10px 15px -3px ${getRgbaColor(secondaryColor, 0.25)}`;
+                                    }}
                                 >
                                     <RefreshCw className="w-5 h-5" />
                                     {t('institution_admin.renew_subscription') || 'Renew Subscription'}
@@ -350,7 +364,19 @@ const Subscription = ({ institution, stats, onRefresh }) => {
                                 <button
                                     onClick={() => handleRenewSubscription()}
                                     disabled={renewalLoading}
-                                    className="px-6 py-3 bg-gradient-to-r from-blue-600 to-teal-500 text-white font-semibold rounded-lg hover:shadow-lg hover:shadow-teal-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                    className="px-6 py-3 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                    style={{
+                                        background: `linear-gradient(to right, ${primaryColor}, ${secondaryColor})`,
+                                        boxShadow: `0 10px 15px -3px ${getRgbaColor(secondaryColor, 0.25)}`
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (!e.target.disabled) {
+                                            e.target.style.boxShadow = `0 10px 15px -3px ${getRgbaColor(secondaryColor, 0.4)}`;
+                                        }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.target.style.boxShadow = `0 10px 15px -3px ${getRgbaColor(secondaryColor, 0.25)}`;
+                                    }}
                                 >
                                     {renewalLoading ? (
                                         <>
@@ -387,7 +413,7 @@ const Subscription = ({ institution, stats, onRefresh }) => {
                         <div className="bg-white/5 border border-white/10 rounded-xl p-6 backdrop-blur-sm">
                             <div className="flex items-center justify-between mb-6">
                                 <h3 className="text-xl font-semibold text-white flex items-center gap-2">
-                                    <Sparkles className="w-5 h-5 text-teal-400" />
+                                    <Sparkles className="w-5 h-5" style={{ color: secondaryColor }} />
                                     {isExpired 
                                         ? (t('institution_admin.select_plan_to_renew') || 'Select Plan to Renew')
                                         : (t('institution_admin.select_plan_to_upgrade') || 'Select Plan to Upgrade')
@@ -407,7 +433,10 @@ const Subscription = ({ institution, stats, onRefresh }) => {
 
                             {loadingPlans ? (
                                 <div className="flex items-center justify-center py-8">
-                                    <div className="w-8 h-8 border-2 border-teal-400 border-t-transparent rounded-full animate-spin"></div>
+                                    <div 
+                                        className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin"
+                                        style={{ borderColor: `${secondaryColor} transparent transparent transparent` }}
+                                    ></div>
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -423,19 +452,35 @@ const Subscription = ({ institution, stats, onRefresh }) => {
                                                 onClick={() => !isCurrentPlan && handleSelectPlan(plan)}
                                                 className={`relative p-6 rounded-xl border-2 cursor-pointer transition-all ${
                                                     isSelected
-                                                        ? 'border-teal-500 bg-teal-500/10'
+                                                        ? ''
                                                         : isCurrentPlan
                                                         ? 'border-gray-500 bg-gray-500/10 cursor-not-allowed opacity-60'
                                                         : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10'
                                                 }`}
+                                                style={isSelected ? {
+                                                    borderColor: secondaryColor,
+                                                    backgroundColor: getRgbaColor(secondaryColor, 0.1)
+                                                } : {}}
                                             >
                                                 {plan.badge && (
-                                                    <span className="absolute top-4 right-4 px-2 py-1 text-xs font-semibold bg-teal-500/20 text-teal-400 rounded">
+                                                    <span 
+                                                        className="absolute top-4 right-4 px-2 py-1 text-xs font-semibold rounded"
+                                                        style={{
+                                                            backgroundColor: getRgbaColor(secondaryColor, 0.2),
+                                                            color: secondaryColor
+                                                        }}
+                                                    >
                                                         {plan.badge}
                                                     </span>
                                                 )}
                                                 {isCurrentPlan && (
-                                                    <span className="absolute top-4 right-4 px-2 py-1 text-xs font-semibold bg-blue-500/20 text-blue-400 rounded">
+                                                    <span 
+                                                        className="absolute top-4 right-4 px-2 py-1 text-xs font-semibold rounded"
+                                                        style={{
+                                                            backgroundColor: getRgbaColor(primaryColor, 0.2),
+                                                            color: primaryColor
+                                                        }}
+                                                    >
                                                         Current
                                                     </span>
                                                 )}
@@ -455,7 +500,7 @@ const Subscription = ({ institution, stats, onRefresh }) => {
                                                 <ul className="space-y-2 mb-4">
                                                     {plan.features?.slice(0, 3).map((feature, idx) => (
                                                         <li key={idx} className="flex items-start gap-2 text-sm text-gray-300">
-                                                            <CheckCircle className="w-4 h-4 text-teal-400 mt-0.5 flex-shrink-0" />
+                                                            <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: secondaryColor }} />
                                                             <span>{feature}</span>
                                                         </li>
                                                     ))}
@@ -489,9 +534,25 @@ const Subscription = ({ institution, stats, onRefresh }) => {
                                                         disabled={renewalLoading || (plan.isCustom && !isSelected)}
                                                         className={`w-full mt-4 px-4 py-2 rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                                                             isSelected || !plan.isCustom
-                                                                ? 'bg-teal-500 hover:bg-teal-600 text-white'
+                                                                ? 'text-white'
                                                                 : 'bg-white/10 hover:bg-white/20 text-white'
                                                         }`}
+                                                        style={(isSelected || !plan.isCustom) ? {
+                                                            backgroundColor: secondaryColor
+                                                        } : {}}
+                                                        onMouseEnter={(e) => {
+                                                            if (!e.target.disabled && (isSelected || !plan.isCustom)) {
+                                                                const rgb = hexToRgb(secondaryColor);
+                                                                if (rgb) {
+                                                                    e.target.style.backgroundColor = `rgb(${Math.max(0, rgb.r - 20)}, ${Math.max(0, rgb.g - 20)}, ${Math.max(0, rgb.b - 20)})`;
+                                                                }
+                                                            }
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            if (isSelected || !plan.isCustom) {
+                                                                e.target.style.backgroundColor = secondaryColor;
+                                                            }
+                                                        }}
                                                     >
                                                         {renewalLoading ? 'Processing...' : (isExpired ? 'Renew' : 'Upgrade')}
                                                     </button>
@@ -526,10 +587,16 @@ const Subscription = ({ institution, stats, onRefresh }) => {
                                 </div>
                             )}
                             {showRenewalWarning && !isExpired && (
-                                <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 flex items-start gap-3">
-                                    <Bell className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
+                                <div 
+                                    className="border rounded-xl p-4 flex items-start gap-3"
+                                    style={{
+                                        backgroundColor: getRgbaColor(primaryColor, 0.1),
+                                        borderColor: getRgbaColor(primaryColor, 0.3)
+                                    }}
+                                >
+                                    <Bell className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: primaryColor }} />
                                     <div className="flex-1">
-                                        <h4 className="font-semibold text-blue-400 mb-1">{t('institution_admin.renewal_warning_title')}</h4>
+                                        <h4 className="font-semibold mb-1" style={{ color: primaryColor }}>{t('institution_admin.renewal_warning_title')}</h4>
                                         <p className="text-sm text-gray-300">{t('institution_admin.renewal_warning_message', { days: daysRemaining })}</p>
                                     </div>
                                 </div>
@@ -595,7 +662,7 @@ const Subscription = ({ institution, stats, onRefresh }) => {
                     {subscription.startDate && subscription.endDate && (
                         <div className="bg-white/5 border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6 backdrop-blur-sm">
                             <h3 className="text-lg sm:text-xl font-bold text-white mb-4 flex items-center gap-2">
-                                <Calendar className="w-5 h-5 text-teal-400" />
+                                <Calendar className="w-5 h-5" style={{ color: secondaryColor }} />
                                 {t('institution_admin.subscription_period')}
                             </h3>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -641,7 +708,7 @@ const Subscription = ({ institution, stats, onRefresh }) => {
                                                 ? 'text-red-300'
                                                 : daysRemaining <= 30
                                                 ? 'text-yellow-300'
-                                                : 'text-blue-300'
+                                                : ''
                                         }`}>
                                             {daysRemaining <= 0 
                                                 ? t('institution_admin.subscription_expired') || 'Subscription Expired'
@@ -667,28 +734,28 @@ const Subscription = ({ institution, stats, onRefresh }) => {
                             <h4 className="text-lg font-semibold text-white mb-4">{t('institution_admin.institution_plan_features') || 'Institution Plan Features'}</h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
                                 <div className="flex items-start gap-3">
-                                    <CheckCircle className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" />
+                                    <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: secondaryColor }} />
                                     <div>
                                         <p className="text-white font-medium">{t('institution_admin.admin_dashboard') || 'Admin Dashboard'}</p>
                                         <p className="text-gray-400 text-sm">{t('institution_admin.admin_dashboard_desc') || 'Complete management interface'}</p>
                                     </div>
                                 </div>
                                 <div className="flex items-start gap-3">
-                                    <CheckCircle className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" />
+                                    <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: secondaryColor }} />
                                     <div>
                                         <p className="text-white font-medium">{t('institution_admin.custom_branding')}</p>
                                         <p className="text-gray-400 text-sm">{t('institution_admin.custom_branding_desc') || 'Your logo and colors'}</p>
                                     </div>
                                 </div>
                                 <div className="flex items-start gap-3">
-                                    <CheckCircle className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" />
+                                    <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: secondaryColor }} />
                                     <div>
                                         <p className="text-white font-medium">{t('institution_admin.bulk_user_management') || 'Bulk User Management'}</p>
                                         <p className="text-gray-400 text-sm">{t('institution_admin.bulk_user_management_desc') || 'Import and manage users easily'}</p>
                                     </div>
                                 </div>
                                 <div className="flex items-start gap-3">
-                                    <CheckCircle className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" />
+                                    <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: secondaryColor }} />
                                     <div>
                                         <p className="text-white font-medium">{t('institution_admin.advanced_analytics')}</p>
                                         <p className="text-gray-400 text-sm">{t('institution_admin.advanced_analytics_desc') || 'Detailed insights and reports'}</p>
@@ -702,7 +769,7 @@ const Subscription = ({ institution, stats, onRefresh }) => {
                     {stats && (
                         <div className="bg-white/5 border border-white/10 rounded-xl p-6 backdrop-blur-sm">
                             <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                                <TrendingUp className="w-5 h-5 text-teal-400" />
+                                <TrendingUp className="w-5 h-5" style={{ color: secondaryColor }} />
                                 {t('institution_admin.usage_statistics')}
                             </h3>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

@@ -11,11 +11,15 @@ import {
     FileSpreadsheet,
     FileText
 } from 'lucide-react';
+import { getBrandingColors, getRgbaColor } from '../utils/brandingColors';
 
-const Dashboard = ({ stats, onAddUser, onExport, onSetActiveTab, onOpenReportsModal, onOpenCustomReportModal }) => {
+const Dashboard = ({ stats, institution, onAddUser, onExport, onSetActiveTab, onOpenReportsModal, onOpenCustomReportModal }) => {
     const { t } = useTranslation();
     const [activityFeed, setActivityFeed] = useState([]);
     const [users, setUsers] = useState([]);
+    
+    // Get branding colors with fallbacks
+    const { primaryColor, secondaryColor } = getBrandingColors(institution);
 
     useEffect(() => {
         if (stats && (users.length > 0 || stats.recentPresentations > 0)) {
@@ -76,8 +80,14 @@ const Dashboard = ({ stats, onAddUser, onExport, onSetActiveTab, onOpenReportsMo
                 <div className="bg-white/5 border border-white/10 rounded-xl p-6 backdrop-blur-sm hover:bg-white/10 transition-all">
                     <div className="flex items-center justify-between mb-4">
                         <span className="text-sm font-medium text-gray-400">{t('institution_admin.users_label')}</span>
-                        <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                            <Users className="w-5 h-5 text-blue-400" />
+                        <div 
+                            className="w-10 h-10 rounded-lg flex items-center justify-center"
+                            style={{ 
+                                backgroundColor: `${primaryColor}33`,
+                                color: primaryColor
+                            }}
+                        >
+                            <Users className="w-5 h-5" style={{ color: primaryColor }} />
                         </div>
                     </div>
                     <p className="text-3xl font-bold text-white mb-1">{stats?.totalUsers || 0}</p>
@@ -87,8 +97,14 @@ const Dashboard = ({ stats, onAddUser, onExport, onSetActiveTab, onOpenReportsMo
                 <div className="bg-white/5 border border-white/10 rounded-xl p-6 backdrop-blur-sm hover:bg-white/10 transition-all">
                     <div className="flex items-center justify-between mb-4">
                         <span className="text-sm font-medium text-gray-400">{t('institution_admin.presentations')}</span>
-                        <div className="w-10 h-10 bg-teal-500/20 rounded-lg flex items-center justify-center">
-                            <Presentation className="w-5 h-5 text-teal-400" />
+                        <div 
+                            className="w-10 h-10 rounded-lg flex items-center justify-center"
+                            style={{ 
+                                backgroundColor: `${secondaryColor}33`,
+                                color: secondaryColor
+                            }}
+                        >
+                            <Presentation className="w-5 h-5" style={{ color: secondaryColor }} />
                         </div>
                     </div>
                     <p className="text-3xl font-bold text-white mb-1">{stats?.totalPresentations || 0}</p>
@@ -111,7 +127,7 @@ const Dashboard = ({ stats, onAddUser, onExport, onSetActiveTab, onOpenReportsMo
             {activityFeed.length > 0 && (
                 <div className="bg-white/5 border border-white/10 rounded-xl p-6 mb-8 backdrop-blur-sm">
                     <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                        <Activity className="w-5 h-5 text-teal-400" />
+                        <Activity className="w-5 h-5" style={{ color: secondaryColor }} />
                         {t('institution_admin.recent_activity')}
                     </h3>
                     <div className="space-y-3">
@@ -119,8 +135,13 @@ const Dashboard = ({ stats, onAddUser, onExport, onSetActiveTab, onOpenReportsMo
                             const Icon = activity.icon || Activity;
                             return (
                                 <div key={activity.id} className="flex items-start gap-3 p-4 bg-black/20 rounded-lg border border-white/10">
-                                    <div className="p-2 bg-teal-500/20 rounded-lg">
-                                        <Icon className="w-4 h-4 text-teal-400" />
+                                    <div 
+                                        className="p-2 rounded-lg"
+                                        style={{ 
+                                            backgroundColor: `${secondaryColor}33`
+                                        }}
+                                    >
+                                        <Icon className="w-4 h-4" style={{ color: secondaryColor }} />
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm text-white font-medium">{activity.message}</p>
@@ -141,7 +162,17 @@ const Dashboard = ({ stats, onAddUser, onExport, onSetActiveTab, onOpenReportsMo
                 <div className="flex flex-wrap gap-3">
                     <button
                         onClick={onAddUser}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-teal-500 text-white text-sm font-medium rounded-lg hover:shadow-lg hover:shadow-teal-500/25 transition-all"
+                        className="flex items-center gap-2 px-4 py-2.5 text-white text-sm font-medium rounded-lg hover:shadow-lg transition-all"
+                        style={{
+                            background: `linear-gradient(to right, ${primaryColor}, ${secondaryColor})`,
+                            boxShadow: `0 10px 15px -3px ${getRgbaColor(secondaryColor, 0.25)}`
+                        }}
+                        onMouseEnter={(e) => {
+                            e.target.style.boxShadow = `0 10px 15px -3px ${getRgbaColor(secondaryColor, 0.4)}`;
+                        }}
+                        onMouseLeave={(e) => {
+                            e.target.style.boxShadow = `0 10px 15px -3px ${getRgbaColor(secondaryColor, 0.25)}`;
+                        }}
                     >
                         <Plus className="w-4 h-4" />
                         {t('institution_admin.add_user')}

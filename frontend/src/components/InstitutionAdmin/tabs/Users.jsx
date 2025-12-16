@@ -13,6 +13,7 @@ import {
     Trash2,
     UserCheck
 } from 'lucide-react';
+import { getBrandingColors, getRgbaColor } from '../utils/brandingColors';
 
 const Users = ({ 
     users, 
@@ -29,9 +30,11 @@ const Users = ({
     onAddUser, 
     onBulkImport, 
     onRemoveUser, 
-    onFetchUsers 
+    onFetchUsers,
+    institution
 }) => {
     const { t } = useTranslation();
+    const { primaryColor, secondaryColor } = getBrandingColors(institution);
 
     // Refetch users when filters change
     useEffect(() => {
@@ -61,7 +64,17 @@ const Users = ({
                     </button>
                     <button
                         onClick={onAddUser}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-teal-500 text-white text-sm font-medium rounded-lg hover:shadow-lg hover:shadow-teal-500/25 transition-all"
+                        className="flex items-center gap-2 px-4 py-2.5 text-white text-sm font-medium rounded-lg hover:shadow-lg transition-all"
+                        style={{
+                            background: `linear-gradient(to right, ${primaryColor}, ${secondaryColor})`,
+                            boxShadow: `0 10px 15px -3px ${getRgbaColor(secondaryColor, 0.25)}`
+                        }}
+                        onMouseEnter={(e) => {
+                            e.target.style.boxShadow = `0 10px 15px -3px ${getRgbaColor(secondaryColor, 0.4)}`;
+                        }}
+                        onMouseLeave={(e) => {
+                            e.target.style.boxShadow = `0 10px 15px -3px ${getRgbaColor(secondaryColor, 0.25)}`;
+                        }}
                     >
                         <Plus className="w-4 h-4" />
                         {t('institution_admin.add_user')}
@@ -82,7 +95,18 @@ const Users = ({
                                 setUsersPage(1);
                             }}
                             placeholder={t('institution_admin.search_users_placeholder')}
-                            className="flex-1 px-4 py-2 bg-black/30 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none text-sm"
+                            className="flex-1 px-4 py-2 bg-black/30 border border-white/10 rounded-lg text-white outline-none text-sm"
+                            style={{
+                                '--tw-ring-color': secondaryColor
+                            }}
+                            onFocus={(e) => {
+                                e.target.style.borderColor = secondaryColor;
+                                e.target.style.boxShadow = `0 0 0 2px ${getRgbaColor(secondaryColor, 0.2)}`;
+                            }}
+                            onBlur={(e) => {
+                                e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                                e.target.style.boxShadow = 'none';
+                            }}
                         />
                     </div>
                     <div className="flex items-center gap-2">
@@ -90,7 +114,15 @@ const Users = ({
                         <select
                             value={userFilter.status}
                             onChange={(e) => setUserFilter({ ...userFilter, status: e.target.value })}
-                            className="px-4 py-2 bg-black/30 border border-white/10 rounded-lg text-white text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none"
+                            className="px-4 py-2 bg-black/30 border border-white/10 rounded-lg text-white text-sm outline-none"
+                            onFocus={(e) => {
+                                e.target.style.borderColor = secondaryColor;
+                                e.target.style.boxShadow = `0 0 0 2px ${getRgbaColor(secondaryColor, 0.2)}`;
+                            }}
+                            onBlur={(e) => {
+                                e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                                e.target.style.boxShadow = 'none';
+                            }}
                         >
                             <option value="all">{t('institution_admin.filter_all_status')}</option>
                             <option value="active">{t('institution_admin.filter_active')}</option>
@@ -122,7 +154,10 @@ const Users = ({
             {/* Users List */}
             {usersLoading ? (
                 <div className="text-center py-12">
-                    <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <div 
+                        className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin mx-auto mb-4"
+                        style={{ borderColor: `${primaryColor} transparent transparent transparent` }}
+                    ></div>
                     <p className="text-gray-400">{t('institution_admin.loading_users')}</p>
                 </div>
             ) : users.length === 0 ? (
@@ -145,7 +180,12 @@ const Users = ({
                                                     className="w-12 h-12 rounded-full flex-shrink-0 border-2 border-white/20" 
                                                 />
                                             ) : (
-                                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-teal-400 flex items-center justify-center text-white font-bold text-base flex-shrink-0">
+                                                <div 
+                                                    className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-base flex-shrink-0"
+                                                    style={{
+                                                        background: `linear-gradient(to bottom right, ${primaryColor}, ${secondaryColor})`
+                                                    }}
+                                                >
                                                     {user.displayName?.charAt(0)?.toUpperCase() || 'U'}
                                                 </div>
                                             )}

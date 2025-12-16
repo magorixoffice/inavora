@@ -7,13 +7,16 @@ import {
     CreditCard,
     Palette,
     History,
-    Key,
     Settings,
     HelpCircle
 } from 'lucide-react';
 
-const Sidebar = ({ activeTab, setActiveTab }) => {
+const Sidebar = ({ activeTab, setActiveTab, institution }) => {
     const { t } = useTranslation();
+    
+    // Get branding colors with fallbacks
+    const primaryColor = institution?.branding?.primaryColor || '#3b82f6';
+    const secondaryColor = institution?.branding?.secondaryColor || '#14b8a6';
 
     const tabs = [
         { id: 'dashboard', label: t('navbar.dashboard'), icon: BarChart3 },
@@ -23,7 +26,6 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
         { id: 'subscription', label: t('institution_admin.subscription_billing'), icon: CreditCard },
         { id: 'branding', label: t('institution_admin.custom_branding'), icon: Palette },
         { id: 'audit', label: t('institution_admin.audit_logs'), icon: History },
-        { id: 'api', label: t('institution_admin.api_management'), icon: Key },
         { id: 'settings', label: t('institution_admin.settings_title'), icon: Settings },
         { id: 'help', label: t('institution_admin.help_center'), icon: HelpCircle }
     ];
@@ -39,9 +41,14 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
                             onClick={() => setActiveTab(tab.id)}
                             className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all ${
                                 activeTab === tab.id
-                                    ? 'bg-teal-500/20 text-teal-400 border border-teal-500/30'
+                                    ? 'border'
                                     : 'text-gray-400 hover:bg-white/5 hover:text-white'
                             }`}
+                            style={activeTab === tab.id ? {
+                                backgroundColor: `${secondaryColor}33`,
+                                color: secondaryColor,
+                                borderColor: `${secondaryColor}4D`
+                            } : {}}
                         >
                             <Icon className="w-5 h-5" />
                             <span>{tab.label}</span>
