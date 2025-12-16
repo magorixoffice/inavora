@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
+import api from '../../config/api';
 import {
   BarChart2,
   Bot,
@@ -21,16 +22,13 @@ import {
   User,
   ChevronDown,
   LogOut,
-  Crown,
-  MessageSquare
+  Crown
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 // eslint-disable-next-line
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import { JoinPresentationBtn, JoinPresentationDialog } from '../common/JoinPresentationDialog';
 import LanguageSelector from '../common/LanguageSelector/LanguageSelector';
-import TestimonialsSection from '../Testimonials/TestimonialsSection';
-import TestimonialForm from '../Testimonials/TestimonialForm';
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -45,12 +43,48 @@ export default function Landing() {
   const { scrollY } = useScroll();
   const [platformUserCount, setPlatformUserCount] = useState(124); // Default to 124 as in the original
   const [billingCycle, setBillingCycle] = useState('monthly'); // Add billing cycle state
-  const [showTestimonialForm, setShowTestimonialForm] = useState(false);
   const typewriterWordsRef = useRef([
     t('landing.engage'),
     t('landing.connect'),
     t('landing.evolve')
   ]);
+
+  // Check if user is institution admin
+  const [isInstitutionAdmin, setIsInstitutionAdmin] = useState(!!sessionStorage.getItem('institutionAdminToken'));
+  const [institutionData, setInstitutionData] = useState(null);
+
+  // Fetch institution data if user is institution admin
+  useEffect(() => {
+    const fetchInstitutionData = async () => {
+      if (isInstitutionAdmin) {
+        try {
+          const response = await api.get('/institution-admin/verify');
+          if (response.data.success && response.data.institution) {
+            setInstitutionData(response.data.institution);
+          }
+        } catch (error) {
+          console.error('Error fetching institution data:', error);
+        }
+      } else {
+        setInstitutionData(null);
+      }
+    };
+
+    fetchInstitutionData();
+  }, [isInstitutionAdmin]);
+
+  // Update isInstitutionAdmin when sessionStorage changes
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === 'institutionAdminToken') {
+        // Update state instead of reloading the page
+        setIsInstitutionAdmin(!!sessionStorage.getItem('institutionAdminToken'));
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   // Update typewriter words when language changes
   useEffect(() => {
@@ -196,8 +230,17 @@ export default function Landing() {
     e.stopPropagation();
 
     try {
-      // Logout is now instant - no need to wait
+      // Check if this is an institution admin logout
+      if (isInstitutionAdmin) {
+        // Remove institution admin token
+        sessionStorage.removeItem('institutionAdminToken');
+        // Update state immediately for real-time UI update
+        setIsInstitutionAdmin(false);
+      }
+      
+      // Logout regular user (if applicable)
       logout();
+      
       toast.success(t('toasts.landing.logout_success'));
       navigate('/', { replace: true });
     } catch (error) {
@@ -358,14 +401,14 @@ export default function Landing() {
           </div>
 
           <div className="hidden lg:flex items-center gap-3 xl:gap-4 shrink-0">
-            {currentUser ? (
+            {currentUser || isInstitutionAdmin ? (
               <>
                 <motion.button
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => navigate('/dashboard')}
+                  onClick={() => navigate(currentUser ? '/dashboard' : '/institution-admin')}
                   className="px-4 xl:px-5 py-2 rounded-full bg-gradient-to-r from-blue-600 to-teal-500 text-white text-sm font-semibold hover:shadow-lg hover:shadow-teal-500/25 transition-all whitespace-nowrap"
                 >
                   {t('navbar.dashboard')}
@@ -378,7 +421,7 @@ export default function Landing() {
                     className="flex items-center gap-2 px-2 py-2 rounded-full hover:bg-white/5 transition-colors border border-transparent hover:border-white/10"
                   >
                     <div className={currentUser?.subscription?.plan !== 'free' ? 'border-2 border-red-400 rounded-full' : ''} style={{ padding: '3px' }}>
-                      {currentUser.photoURL ? (
+                      {currentUser?.photoURL ? (
                         <img 
                           src={currentUser.photoURL} 
                           alt="User" 
@@ -402,13 +445,22 @@ export default function Landing() {
                         transition={{ duration: 0.1 }}
                         className="absolute right-0 top-full mt-2 w-64 bg-[#1e293b] rounded-xl shadow-2xl border border-white/10 z-50 overflow-hidden"
                       >
-                        <div className="px-4 py-3 border-b border-white/5 bg-white/5">
-                          <p className="text-sm font-semibold text-white">{currentUser?.displayName}</p>
-                          <p className="text-xs text-gray-400 truncate">{currentUser?.email}</p>
-                        </div>
-                        <p className="px-4 py-3 border-b border-white/5 text-sm text-gray-300">
-                          {t(`pricing.${currentUser?.subscription?.plan}_plan_name`)} {t('dashboard.plan')}
-                        </p>
+                        {currentUser ? (
+                          <>
+                            <div className="px-4 py-3 border-b border-white/5 bg-white/5">
+                              <p className="text-sm font-semibold text-white">{currentUser?.displayName}</p>
+                              <p className="text-xs text-gray-400 truncate">{currentUser?.email}</p>
+                            </div>
+                            <p className="px-4 py-3 border-b border-white/5 text-sm text-gray-300">
+                              {t(`pricing.${currentUser?.subscription?.plan}_plan_name`)} {t('dashboard.plan')}
+                            </p>
+                          </>
+                        ) : (
+                          <div className="px-4 py-3 border-b border-white/5 bg-white/5">
+                            <p className="text-sm font-semibold text-white">{institutionData?.name || t('institution_admin.institution_admin')}</p>
+                            <p className="text-xs text-gray-400 truncate">{t('institution_admin.admin_access')}</p>
+                          </div>
+                        )}
                         <button
                           onClick={(e) => handleLogout(e)}
                           data-logout-button="true"
@@ -511,38 +563,52 @@ export default function Landing() {
                   {t('navbar.pricing')}
                 </button>
 
-                {currentUser ? 
+                {currentUser || isInstitutionAdmin ? 
                 (<div className="flex flex-col gap-3">
                   <button
                     onClick={() => {
                       setMobileMenuOpen(false);
-                      navigate('/dashboard');
+                      navigate(currentUser ? '/dashboard' : '/institution-admin');
                     }}
                     className="px-4 xl:px-5 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-teal-500 text-white text-sm font-semibold hover:shadow-lg hover:shadow-teal-500/25 transition-all whitespace-nowrap"
                   >
                     {t('navbar.dashboard')}
                   </button>
                   <div className="pt-2 border-t border-white/10">
-                    <div className="flex items-center gap-2 px-3 py-2 mb-2">
-                      {currentUser.photoURL ? (
-                        <img 
-                          src={currentUser.photoURL} 
-                          alt="User" 
-                          className="w-8 h-8 rounded-full border border-white/10 object-cover"
-                        />
-                      ) : (
-                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-inner">
-                          {currentUser?.displayName?.charAt(0).toUpperCase() || <User className="w-4 h-4" />}
+                    {currentUser ? (
+                      <>
+                        <div className="flex items-center gap-2 px-3 py-2 mb-2">
+                          {currentUser.photoURL ? (
+                            <img 
+                              src={currentUser.photoURL} 
+                              alt="User" 
+                              className="w-8 h-8 rounded-full border border-white/10 object-cover"
+                            />
+                          ) : (
+                            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-inner">
+                              {currentUser?.displayName?.charAt(0).toUpperCase() || <User className="w-4 h-4" />}
+                            </div>
+                          )}
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-white">{currentUser?.displayName}</p>
+                            <p className="text-xs text-gray-400 truncate">{currentUser?.email}</p>
+                          </div>
                         </div>
-                      )}
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold text-white">{currentUser?.displayName}</p>
-                        <p className="text-xs text-gray-400 truncate">{currentUser?.email}</p>
+                        <p className="px-3 py-2 text-sm text-gray-300 border-b border-white/5">
+                          {t(`pricing.${currentUser?.subscription?.plan}_plan_name`)} {t('dashboard.plan')}
+                        </p>
+                      </>
+                    ) : (
+                      <div className="flex items-center gap-2 px-3 py-2 mb-2">
+                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-inner">
+                          <User className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-white">{institutionData?.name || t('institution_admin.institution_admin')}</p>
+                          <p className="text-xs text-gray-400 truncate">{t('institution_admin.admin_access')}</p>
+                        </div>
                       </div>
-                    </div>
-                    <p className="px-3 py-2 text-sm text-gray-300 border-b border-white/5">
-                      {t(`pricing.${currentUser?.subscription?.plan}_plan_name`)} {t('dashboard.plan')}
-                    </p>
+                    )}
                     <button
                       onClick={(e) => {
                         setMobileMenuOpen(false);
@@ -1008,9 +1074,6 @@ export default function Landing() {
             </div>
           </div>
         </section>
-
-        {/* Testimonials Section */}
-        <TestimonialsSection featured={true} limit={6} />
       </main>
 
       {/* Scroll to Top Button */}
@@ -1055,7 +1118,6 @@ export default function Landing() {
                   { name: t('footer.about_us'), path: "/about" },
                   { name: t('footer.pricing'), path: "/pricing" },
                   { name: t('footer.careers'), path: "/careers" },
-                  { name: 'Testimonials', path: "/testimonials" },
                   { name: t('footer.contact'), path: "/contact" }
                 ].map((link) => (
                   <li key={link.name}>
@@ -1166,17 +1228,6 @@ export default function Landing() {
       {showJoinDialog &&
         <JoinPresentationDialog onCancel={setShowJoinDialog} />
       }
-
-      {/* Testimonial Form Modal - Only show if triggered from testimonials section */}
-      {showTestimonialForm && (
-        <TestimonialForm
-          onClose={() => setShowTestimonialForm(false)}
-          onSuccess={() => {
-            setShowTestimonialForm(false);
-            toast.success('Thank you! Your testimonial has been submitted and will be reviewed.');
-          }}
-        />
-      )}
     </div>
   );
 };
