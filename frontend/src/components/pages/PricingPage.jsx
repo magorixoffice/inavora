@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { translateError } from '../../utils/errorTranslator'; // Added useTranslation import
@@ -15,6 +15,14 @@ const PricingPage = () => {
     const { user, token, refreshUser } = useAuth();
     const navigate = useNavigate();
     const [loadingPlanId, setLoadingPlanId] = useState(null);
+
+    // Refresh user data when component mounts to ensure latest plan information
+    useEffect(() => {
+        if (user) {
+            refreshUser();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const [billingCycle, setBillingCycle] = useState('monthly');
 
@@ -395,7 +403,7 @@ const PricingPage = () => {
 
                                         <th className="p-6 border-b border-white/10 bg-white/5 text-center text-lg font-semibold relative">
                                             {t('pricing.compare_table_pro')}
-                                            {user && (user?.subscription?.plan === 'pro-monthly' || user?.subscription?.plan === 'pro-yearly') ? (
+                                            {user && (user?.subscription?.plan === 'pro' || user?.subscription?.plan === 'pro-monthly' || user?.subscription?.plan === 'pro-yearly') ? (
                                                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white text-slate-900 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg whitespace-nowrap">
                                                     Current Plan
                                                 </div>
