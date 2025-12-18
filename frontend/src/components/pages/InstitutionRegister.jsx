@@ -772,18 +772,20 @@ const InstitutionRegister = () => {
             required
             value={passwordData.password}
             onChange={(e) => setPasswordData({ ...passwordData, password: e.target.value })}
+            autoComplete="new-password"
             className="w-full pl-10 pr-12 py-3 bg-black/30 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none"
             placeholder={t('institution_register.password_placeholder')}
           />
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-300"
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 z-10 text-gray-500 hover:text-gray-300"
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
           >
             {showPassword ? (
-              <EyeOff className="w-5 h-5 text-gray-500" />
+              <EyeOff className="w-5 h-5 text-gray-500 cursor-pointer" />
             ) : (
-              <Eye className="w-5 h-5 text-gray-500" />
+              <Eye className="w-5 h-5 text-gray-500 cursor-pointer" />
             )}
           </button>
         </div>

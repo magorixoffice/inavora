@@ -26,6 +26,7 @@ router.get('/dashboard/stats', verifySuperAdmin, superAdminController.getDashboa
  * Users Routes
  */
 router.get('/users', verifySuperAdmin, superAdminController.getUsers);
+router.post('/users', verifySuperAdmin, superAdminController.createUser);
 router.get('/users/:id', verifySuperAdmin, superAdminController.getUserById);
 router.put('/users/:id/plan', verifySuperAdmin, superAdminController.updateUserPlan);
 router.put('/users/:id/status', verifySuperAdmin, superAdminController.updateUserStatus);

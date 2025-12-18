@@ -239,18 +239,20 @@ const Login = () => {
                 placeholder={t('login.password_placeholder')}
                 required
                 disabled={loading}
+                autoComplete="new-password"
                 className="w-full pl-10 pr-12 py-3.5 bg-slate-900/50 border border-white/10 rounded-xl focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 text-white placeholder-gray-500 outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center z-10"
                 disabled={loading}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
                 {showPassword ? (
-                  <EyeOff className="h-5 w-5 text-gray-500 hover:text-gray-300 transition-colors" />
+                  <EyeOff className="h-5 w-5 text-gray-500 hover:text-gray-300 transition-colors cursor-pointer" />
                 ) : (
-                  <Eye className="h-5 w-5 text-gray-500 hover:text-gray-300 transition-colors" />
+                  <Eye className="h-5 w-5 text-gray-500 hover:text-gray-300 transition-colors cursor-pointer" />
                 )}
               </button>
             </div>

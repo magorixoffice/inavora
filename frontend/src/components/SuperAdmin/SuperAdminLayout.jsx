@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import api from '../../config/api';
 import {
   LayoutDashboard, Users, Building2, DollarSign, TrendingUp, Presentation,
-  Activity, List, Settings, Briefcase, FileText, Menu, X as XIcon, LogOut, Bell, MessageSquare
+  Activity, List, Settings, Briefcase, FileText, Menu, X as XIcon, LogOut, Bell, MessageSquare, UserPlus
 } from 'lucide-react';
 
 const SuperAdminLayout = () => {
@@ -20,6 +20,7 @@ const SuperAdminLayout = () => {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/super-admin' },
     { id: 'users', label: 'Users', icon: Users, path: '/super-admin/users' },
+    { id: 'add-user', label: 'Add User', icon: UserPlus, path: '/super-admin/add-user' },
     { id: 'institutions', label: 'Institutions', icon: Building2, path: '/super-admin/institutions' },
     { id: 'payments', label: 'Payments', icon: DollarSign, path: '/super-admin/payments' },
     { id: 'analytics', label: 'Analytics', icon: TrendingUp, path: '/super-admin/analytics' },

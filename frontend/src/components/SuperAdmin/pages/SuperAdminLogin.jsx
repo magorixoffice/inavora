@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import api from '../../../config/api';
 import { useTranslation } from 'react-i18next';
 import { translateError } from '../../../utils/errorTranslator';
-import { Lock, ArrowLeft } from 'lucide-react';
+import { Lock, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 
 const SuperAdminLogin = () => {
   const { t } = useTranslation();
@@ -13,6 +13,7 @@ const SuperAdminLogin = () => {
   const [password, setPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
@@ -72,18 +73,34 @@ const SuperAdminLogin = () => {
         <form onSubmit={handlePasswordSubmit} className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-2">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                setPasswordError('');
-              }}
-              className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-              placeholder="Enter admin password"
-              autoFocus
-              disabled={loading}
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setPasswordError('');
+                }}
+                className="w-full px-4 py-3 pr-12 bg-slate-900/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                placeholder="Enter admin password"
+                autoFocus
+                disabled={loading}
+                autoComplete="new-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center z-10"
+                disabled={loading}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-5 w-5 text-slate-500 hover:text-slate-300 transition-colors cursor-pointer" />
+                ) : (
+                  <Eye className="h-5 w-5 text-slate-500 hover:text-slate-300 transition-colors cursor-pointer" />
+                )}
+              </button>
+            </div>
             {passwordError && (
               <p className="text-red-400 text-sm mt-2">{passwordError}</p>
             )}

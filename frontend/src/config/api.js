@@ -52,6 +52,16 @@ api.interceptors.response.use(
     }
 
     if (error.response?.status === 401) {
+      // Don't redirect if this is a login attempt (let the component handle the error)
+      const isLoginRequest = error.config?.url?.includes('/login') || 
+                            error.config?.url?.includes('/register') ||
+                            error.config?.url?.includes('/reset-password');
+      
+      if (isLoginRequest) {
+        // Let the login component handle the error
+        return Promise.reject(error);
+      }
+      
       // Check if it's a super admin route
       const isSuperAdminRoute = error.config?.url?.includes('/super-admin') || 
                                 error.config?.url?.includes('/job-postings') ||
@@ -75,7 +85,9 @@ api.interceptors.response.use(
       } else {
         // Regular auth token expiration
         localStorage.removeItem('jwtToken');
-        window.location.href = '/login';
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
       }
     }
     return Promise.reject(error);

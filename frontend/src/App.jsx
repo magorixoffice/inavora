@@ -29,6 +29,7 @@ const SuperAdminLayout = lazy(() => import('./components/SuperAdmin/SuperAdminLa
 const SuperAdminLogin = lazy(() => import('./components/SuperAdmin/pages/SuperAdminLogin'));
 const DashboardPage = lazy(() => import('./components/SuperAdmin/pages/DashboardPage'));
 const UsersPage = lazy(() => import('./components/SuperAdmin/pages/UsersPage'));
+const AddUserPage = lazy(() => import('./components/SuperAdmin/pages/AddUserPage'));
 const InstitutionsPage = lazy(() => import('./components/SuperAdmin/pages/InstitutionsPage'));
 const PaymentsPage = lazy(() => import('./components/SuperAdmin/pages/PaymentsPage'));
 const AnalyticsPage = lazy(() => import('./components/SuperAdmin/pages/AnalyticsPage'));
@@ -165,6 +166,7 @@ function App() {
                 <Route index element={<DashboardPage />} />
                 <Route path="dashboard" element={<DashboardPage />} />
                 <Route path="users" element={<UsersPage />} />
+                <Route path="add-user" element={<AddUserPage />} />
                 <Route path="institutions" element={<InstitutionsPage />} />
                 <Route path="payments" element={<PaymentsPage />} />
                 <Route path="analytics" element={<AnalyticsPage />} />
