@@ -9,6 +9,15 @@ const UploadEditor = ({ slide, onUpdate }) => {
   const [uploadedFileName, setUploadedFileName] = useState(slide?.uploadedFileName || '');
   const isMounted = useRef(false);
 
+  // Sync state when slide prop changes
+  useEffect(() => {
+    if (slide) {
+      setQuestion(slide.question || '');
+      setUploadedFileUrl(slide.uploadedFileUrl || '');
+      setUploadedFileName(slide.uploadedFileName || '');
+    }
+  }, [slide?.id, slide?.question, slide?.uploadedFileUrl, slide?.uploadedFileName]);
+
   useEffect(() => {
     // Skip the first render to avoid infinite loop
     if (!isMounted.current) {

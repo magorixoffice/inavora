@@ -21,6 +21,13 @@ const QuizParticipantInput = ({
   const isActive = quizState.isActive || false;
   const startTime = quizState.startTime;
 
+  // Preserve selected answer from submission result
+  useEffect(() => {
+    if (hasSubmitted && submissionResult && submissionResult.answer) {
+      setSelectedAnswer(submissionResult.answer);
+    }
+  }, [hasSubmitted, submissionResult]);
+
   // Track response time
   useEffect(() => {
     if (isActive && startTime && !hasSubmitted) {
@@ -145,8 +152,12 @@ const QuizParticipantInput = ({
   // Get correct answer ID
   const correctAnswerId = quizSettings.correctAnswerId || null;
 
-  // Show submission result
+  // Show submission result (always show if submitted, even when quiz ends)
   if (hasSubmitted && submissionResult) {
+    // Find the selected option text
+    const selectedOption = options.find(opt => opt.id === submissionResult.answer || opt.id === selectedAnswer);
+    const selectedOptionText = selectedOption?.text || 'Your answer';
+    
     return (
       <div className="w-full max-w-3xl mx-auto space-y-6">
         <div className="mb-8 sm:mb-12">
@@ -155,7 +166,7 @@ const QuizParticipantInput = ({
           </h2>
         </div>
 
-        {/* Submission Result */}
+        {/* Submission Result - Always visible */}
         <div className={`rounded-2xl p-6 sm:p-8 text-center ${
           submissionResult.isCorrect 
             ? 'bg-[#1D2A20] border-2 border-[#2E7D32]/30' 
@@ -167,6 +178,10 @@ const QuizParticipantInput = ({
               <h3 className="text-2xl sm:text-3xl font-bold text-[#4CAF50] mb-2">
                 Correct! 🎉
               </h3>
+              <div className="mb-4">
+                <p className="text-base sm:text-lg text-[#B0B0B0] mb-2">Your answer:</p>
+                <p className="text-lg sm:text-xl font-semibold text-[#E0E0E0]">{selectedOptionText}</p>
+              </div>
               <div className="flex items-center justify-center gap-2 mb-4">
                 <Trophy className="h-5 w-5 sm:h-6 sm:w-6 text-[#FFD700]" />
                 <span className="text-3xl sm:text-4xl font-bold text-[#E0E0E0]">
@@ -185,7 +200,21 @@ const QuizParticipantInput = ({
               <h3 className="text-2xl sm:text-3xl font-bold text-[#EF5350] mb-2">
                 Incorrect
               </h3>
-              <p className="text-base sm:text-lg text-[#E0E0E0]">
+              <div className="mb-4">
+                <p className="text-base sm:text-lg text-[#B0B0B0] mb-2">Your answer:</p>
+                <p className="text-lg sm:text-xl font-semibold text-[#E0E0E0]">{selectedOptionText}</p>
+              </div>
+              {/* Show correct answer */}
+              {correctAnswerId && (() => {
+                const correctOption = options.find(opt => opt.id === correctAnswerId);
+                return correctOption ? (
+                  <div className="mt-4 p-3 bg-[#1D2A20]/50 border border-[#4CAF50]/30 rounded-lg">
+                    <p className="text-sm text-[#4CAF50] font-semibold mb-1">Correct answer:</p>
+                    <p className="text-base text-[#E0E0E0]">{correctOption.text}</p>
+                  </div>
+                ) : null;
+              })()}
+              <p className="text-base sm:text-lg text-[#E0E0E0] mt-4">
                 Better luck on the next question!
               </p>
             </>
@@ -209,7 +238,11 @@ const QuizParticipantInput = ({
                 const maxVotes = Math.max(...Object.values(voteCounts || {}), 1);
                 const percentage = maxVotes > 0 ? (voteCount / maxVotes) * 100 : 0;
                 const isCorrect = correctAnswerId === option.id;
-                const isSelected = selectedAnswer === option.id;
+                // Check if this is the participant's submitted answer
+                const isSelected = (selectedAnswer === option.id) || 
+                                 (hasSubmitted && submissionResult && 
+                                  (submissionResult.answer === option.id || 
+                                   submissionResult.selectedAnswer === option.id));
                 
                 return (
                   <div
@@ -246,8 +279,13 @@ const QuizParticipantInput = ({
                           </span>
                         )}
                         {isSelected && !isCorrect && (
-                          <span className="px-2 py-1 rounded bg-[#FF9800]/20 text-[#FF9800] text-xs font-bold">
-                            Your Answer
+                          <span className="px-2 py-1 rounded bg-[#EF5350]/20 text-[#EF5350] text-xs font-bold">
+                            ✗ Your Answer (Incorrect)
+                          </span>
+                        )}
+                        {isSelected && isCorrect && (
+                          <span className="px-2 py-1 rounded bg-[#4CAF50]/20 text-[#4CAF50] text-xs font-bold">
+                            ✓ Your Answer (Correct)
                           </span>
                         )}
                       </div>

@@ -631,7 +631,7 @@ const PresentMode = () => {
     });
   }, [socket, slides, currentSlideIndex, id]);
 
-  const handleMarkQnaAnswered = (questionId, answered = true) => {
+  const handleMarkQnaAnswered = (questionId, answered = true, answerText = null) => {
     const slide = slides[currentSlideIndex];
     if (!socket || !slide || slide.type !== 'qna') return;
     const slideId = getSlideId(slide);
@@ -641,6 +641,7 @@ const PresentMode = () => {
       slideId,
       questionId,
       answered,
+      answerText: answerText || null,
     });
   };
 
@@ -1017,6 +1018,30 @@ const PresentMode = () => {
           <InstructionPresenterView
             slide={slide}
             presentation={presentation}
+          />
+        );
+      case 'video':
+        return (
+          <SlideCanvas
+            slide={slide}
+            presentation={presentation}
+            isPresenter={true}
+          />
+        );
+      case 'text':
+        return (
+          <SlideCanvas
+            slide={slide}
+            presentation={presentation}
+            isPresenter={true}
+          />
+        );
+      case 'image':
+        return (
+          <SlideCanvas
+            slide={slide}
+            presentation={presentation}
+            isPresenter={true}
           />
         );
       default:

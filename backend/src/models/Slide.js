@@ -445,25 +445,9 @@ slideSchema.pre('save', function(next) {
     }
   }
 
-  // Validation for miro type
-  if (this.type === 'miro' && (!this.miroUrl || !this.miroUrl.trim())) {
-    next(new Error('Miro URL is required for miro slides'));
-  }
-
-  // Validation for powerpoint type
-  if (this.type === 'powerpoint' && (!this.powerpointUrl || !this.powerpointUrl.trim())) {
-    next(new Error('PowerPoint URL is required for powerpoint slides'));
-  }
-
-  // Validation for google_slides type
-  if (this.type === 'google_slides' && (!this.googleSlidesUrl || !this.googleSlidesUrl.trim())) {
-    next(new Error('Google Slides URL is required for google_slides slides'));
-  }
-
-  // Validation for upload type
-  if (this.type === 'upload' && (!this.uploadedFileUrl || !this.uploadedFileUrl.trim())) {
-    next(new Error('Uploaded file URL is required for upload slides'));
-  }
+  // Note: URL validation for "Bring Your Slides In" slide types is handled by the frontend
+  // Backend allows empty URLs to support draft editing workflow
+  // Frontend will validate and require URLs before allowing final save/submission
 
   next();
 });

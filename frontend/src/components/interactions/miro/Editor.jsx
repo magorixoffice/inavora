@@ -8,6 +8,14 @@ const MiroEditor = ({ slide, onUpdate }) => {
   const [miroUrl, setMiroUrl] = useState(slide?.miroUrl || '');
   const isMounted = useRef(false);
 
+  // Sync state when slide prop changes
+  useEffect(() => {
+    if (slide) {
+      setQuestion(slide.question || '');
+      setMiroUrl(slide.miroUrl || '');
+    }
+  }, [slide?.id, slide?.question, slide?.miroUrl]);
+
   useEffect(() => {
     // Skip the first render to avoid infinite loop
     if (!isMounted.current) {

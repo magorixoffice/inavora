@@ -1,9 +1,86 @@
 import { useTranslation } from 'react-i18next';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { BookOpen } from 'lucide-react';
 import api from '../../config/api';
 import InstructionPresenterView from '../interactions/instruction/presenter/PresenterView';
+
+// Helper component to position the correct area overlay accounting for object-contain letterboxing
+const CorrectAreaOverlay = ({ correctArea, imageRef }) => {
+  const [overlayStyle, setOverlayStyle] = useState(null);
+
+  useEffect(() => {
+    const updateOverlayPosition = () => {
+      if (!imageRef.current || !imageRef.current.complete) {
+        setOverlayStyle(null);
+        return;
+      }
+
+      const img = imageRef.current;
+      const rect = img.getBoundingClientRect();
+      const naturalWidth = img.naturalWidth;
+      const naturalHeight = img.naturalHeight;
+
+      if (naturalWidth === 0 || naturalHeight === 0) {
+        setOverlayStyle(null);
+        return;
+      }
+
+      // Calculate the actual displayed image dimensions (accounting for object-contain)
+      const imageAspect = naturalWidth / naturalHeight;
+      const containerAspect = rect.width / rect.height;
+
+      let actualImageWidth, actualImageHeight, offsetX, offsetY;
+
+      if (imageAspect > containerAspect) {
+        // Image is constrained by width
+        actualImageWidth = rect.width;
+        actualImageHeight = rect.width / imageAspect;
+        offsetX = 0;
+        offsetY = (rect.height - actualImageHeight) / 2;
+      } else {
+        // Image is constrained by height
+        actualImageWidth = rect.height * imageAspect;
+        actualImageHeight = rect.height;
+        offsetX = (rect.width - actualImageWidth) / 2;
+        offsetY = 0;
+      }
+
+      // Position overlay relative to the actual image area
+      setOverlayStyle({
+        left: `${offsetX + (correctArea.x / 100) * actualImageWidth}px`,
+        top: `${offsetY + (correctArea.y / 100) * actualImageHeight}px`,
+        width: `${(correctArea.width / 100) * actualImageWidth}px`,
+        height: `${(correctArea.height / 100) * actualImageHeight}px`,
+      });
+    };
+
+    updateOverlayPosition();
+
+    // Update on window resize
+    window.addEventListener('resize', updateOverlayPosition);
+    // Update when image loads
+    if (imageRef.current) {
+      imageRef.current.addEventListener('load', updateOverlayPosition);
+    }
+
+    return () => {
+      window.removeEventListener('resize', updateOverlayPosition);
+      if (imageRef.current) {
+        imageRef.current.removeEventListener('load', updateOverlayPosition);
+      }
+    };
+  }, [correctArea, imageRef]);
+
+  if (!overlayStyle) return null;
+
+  return (
+    <div
+      className="absolute border-2 border-[#4CAF50] bg-[#4CAF50]/10 pointer-events-none"
+      style={overlayStyle}
+    />
+  );
+};
 
 // eslint-disable-next-line no-unused-vars
 const SlideCanvas = ({ slide, presentation, isPresenter = false, onSettingsChange, onSaveSettings, responses = [], isLive = false }) => {
@@ -13,6 +90,8 @@ const SlideCanvas = ({ slide, presentation, isPresenter = false, onSettingsChang
   const [leaderboardSummary, setLeaderboardSummary] = useState(null);
   const [isLoadingLeaderboard, setIsLoadingLeaderboard] = useState(false);
   const [leaderboardError, setLeaderboardError] = useState(null);
+  // Ref for pin on image - must be at top level to follow Rules of Hooks
+  const pinImageRef = useRef(null);
 
   // Extract video ID from YouTube URL
   const getYoutubeVideoId = (url) => {
@@ -24,6 +103,29 @@ const SlideCanvas = ({ slide, presentation, isPresenter = false, onSettingsChang
   // Check if URL is a valid video URL (YouTube or Vimeo)
   const isValidVideoUrl = (url) => {
     return url && (url.includes('youtube.com') || url.includes('youtu.be') || url.includes('vimeo.com'));
+  };
+
+  // Clean Cloudinary URL by removing transformation parameters that might cause 400 errors
+  // This fixes broken eager transformation URLs
+  const cleanCloudinaryUrl = (url) => {
+    if (!url || !url.includes('cloudinary.com')) {
+      return url;
+    }
+    
+    // If URL contains transformation parameters (like /br_auto,f_auto,q_auto:eco/)
+    // and it's a video URL, try to get the base URL
+    // Pattern: https://res.cloudinary.com/cloud_name/video/upload/transformations/v1234567/folder/file.ext
+    const cloudinaryVideoPattern = /(https:\/\/res\.cloudinary\.com\/[^\/]+\/video\/upload\/)([^\/]+\/)(v\d+\/.*)/;
+    const match = url.match(cloudinaryVideoPattern);
+    
+    if (match) {
+      // Reconstruct URL without transformation parameters
+      // Format: https://res.cloudinary.com/cloud_name/video/upload/v1234567/folder/file.ext
+      return `${match[1]}${match[3]}`;
+    }
+    
+    // If pattern doesn't match, return original URL
+    return url;
   };
 
   // Update local state when slide prop changes
@@ -599,24 +701,14 @@ const SlideCanvas = ({ slide, presentation, isPresenter = false, onSettingsChang
                 {imageUrl ? (
                   <div className="relative rounded-xl overflow-hidden border-2 border-[#2F2F2F] bg-[#232323]">
                     <img
+                      ref={pinImageRef}
                       src={imageUrl}
                       alt={t('slide_editors.pin_on_image.image_alt')}
                       className="w-full h-auto object-contain"
                       style={{ maxHeight: '60vh' }}
                     />
-                    {/* Correct area overlay */}
-                    {correctArea && (
-                      <div
-                        className="absolute border-2 border-[#4CAF50] bg-[#4CAF50]/10"
-                        style={{
-                          left: `${correctArea.x}%`,
-                          top: `${correctArea.y}%`,
-                          width: `${correctArea.width}%`,
-                          height: `${correctArea.height}%`,
-                        }}
-                      > 
-                      </div>
-                    )}
+                    {/* Correct area overlay - positioned relative to the actual image */}
+                    {correctArea && <CorrectAreaOverlay correctArea={correctArea} imageRef={pinImageRef} />}
                     {/* Sample pin for preview */}
                     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-full">
                       <svg className="w-5 sm:w-6 h-5 sm:h-6 text-[#4CAF50] drop-shadow-lg" fill="currentColor" viewBox="0 0 24 24">
@@ -731,7 +823,7 @@ const SlideCanvas = ({ slide, presentation, isPresenter = false, onSettingsChang
               <h2 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-[#E0E0E0] mb-4 sm:mb-6 text-center">
                 {question || t('slide_editors.video.default_title')}
               </h2>
-              {slide?.videoUrl ? (
+              {(slide?.videoUrl && slide.videoUrl.trim() !== '') ? (
                 <div className="rounded-xl overflow-hidden border border-[#2F2F2F] bg-[#232323] aspect-video">
                   {isValidVideoUrl(slide.videoUrl) ? (
                     // YouTube/Vimeo URL - use iframe
@@ -746,10 +838,17 @@ const SlideCanvas = ({ slide, presentation, isPresenter = false, onSettingsChang
                   ) : (
                     // Uploaded video - use video tag
                     <video
-                      src={slide.videoUrl}
+                      src={cleanCloudinaryUrl(slide.videoUrl)}
                       controls
                       className="w-full h-full"
                       style={{ objectFit: 'contain' }}
+                      onError={(e) => {
+                        console.error('Video load error:', e.target.src);
+                        // If video fails to load, try the original URL without transformations
+                        if (e.target.src !== slide.videoUrl) {
+                          e.target.src = slide.videoUrl;
+                        }
+                      }}
                     >
                       {t('slide_editors.video.video_not_supported')}
                     </video>
@@ -758,6 +857,9 @@ const SlideCanvas = ({ slide, presentation, isPresenter = false, onSettingsChang
               ) : (
                 <div className="rounded-xl border-2 border-dashed border-[#3A3A3A] bg-[#232323] py-12 sm:py-16 text-center">
                   <p className="text-[#9E9E9E]">{t('slide_editors.video.enter_url_prompt')}</p>
+                  {process.env.NODE_ENV === 'development' && (
+                    <p className="text-xs text-[#666] mt-2">Debug: videoUrl={slide?.videoUrl ? 'exists' : 'missing'}, videoPublicId={slide?.videoPublicId ? 'exists' : 'missing'}</p>
+                  )}
                 </div>
               )}
             </div>

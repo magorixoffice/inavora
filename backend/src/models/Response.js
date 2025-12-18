@@ -72,6 +72,13 @@ const responseSchema = new mongoose.Schema({
   isAnswered: {
     type: Boolean,
     default: false
+  },
+  // For QnA type - store the presenter's answer text
+  presenterAnswer: {
+    type: String,
+    default: null,
+    trim: true,
+    maxlength: 1000
   }
 }, {
   timestamps: true

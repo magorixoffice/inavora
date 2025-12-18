@@ -37,8 +37,8 @@ function attachOpenEndedVotingHandlers({ io, socket, buildResultsPayload }) {
         return;
       }
 
-      if (slide.type !== 'open_ended') {
-        socket.emit('error', { message: 'Voting mode is only available for open-ended slides' });
+      if (slide.type !== 'open_ended' && slide.type !== 'type_answer') {
+        socket.emit('error', { message: 'Voting mode is only available for open-ended and type answer slides' });
         return;
       }
 
@@ -85,8 +85,8 @@ function attachOpenEndedVotingHandlers({ io, socket, buildResultsPayload }) {
         return;
       }
 
-      if (slide.type !== 'open_ended') {
-        socket.emit('error', { message: 'Voting is only available for open-ended slides' });
+      if (slide.type !== 'open_ended' && slide.type !== 'type_answer') {
+        socket.emit('error', { message: 'Voting is only available for open-ended and type answer slides' });
         return;
       }
 

@@ -222,7 +222,8 @@ const PinOnImageEditor = ({ slide, onUpdate }) => {
               <img
                 src={imageUrl}
                 alt="Background"
-                className="w-full h-64 object-contain bg-[#1F1F1F]"
+                className="w-full h-auto object-contain bg-[#1F1F1F]"
+                style={{ maxHeight: '60vh' }}
               />
               <button
                 type="button"

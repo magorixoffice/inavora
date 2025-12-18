@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Video, Link, Upload, X } from 'lucide-react';
 import SlideTypeHeader from '../common/SlideTypeHeader';
 import { useTranslation } from 'react-i18next';
@@ -13,6 +13,7 @@ const VideoEditor = ({ slide, onUpdate }) => {
   const [videoPublicId, setVideoPublicId] = useState(slide?.videoPublicId || '');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadMethod, setUploadMethod] = useState('url'); // 'url' or 'file'
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (slide) {
@@ -52,6 +53,29 @@ const VideoEditor = ({ slide, onUpdate }) => {
     return url.includes('youtube.com') || url.includes('youtu.be') || url.includes('vimeo.com');
   };
 
+  // Clean Cloudinary URL by removing transformation parameters that might cause 400 errors
+  // This fixes broken eager transformation URLs
+  const cleanCloudinaryUrl = (url) => {
+    if (!url || !url.includes('cloudinary.com')) {
+      return url;
+    }
+    
+    // If URL contains transformation parameters (like /br_auto,f_auto,q_auto:eco/)
+    // and it's a video URL, try to get the base URL
+    // Pattern: https://res.cloudinary.com/cloud_name/video/upload/transformations/v1234567/folder/file.ext
+    const cloudinaryVideoPattern = /(https:\/\/res\.cloudinary\.com\/[^\/]+\/video\/upload\/)([^\/]+\/)(v\d+\/.*)/;
+    const match = url.match(cloudinaryVideoPattern);
+    
+    if (match) {
+      // Reconstruct URL without transformation parameters
+      // Format: https://res.cloudinary.com/cloud_name/video/upload/v1234567/folder/file.ext
+      return `${match[1]}${match[3]}`;
+    }
+    
+    // If pattern doesn't match, return original URL
+    return url;
+  };
+
   const handleVideoUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -59,12 +83,20 @@ const VideoEditor = ({ slide, onUpdate }) => {
     // Check if file is a video
     if (!file.type.startsWith('video/')) {
       toast.error(t('slide_editors.video.upload_video_error'));
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
       return;
     }
 
     // Check file size (max 100MB)
     if (file.size > 100 * 1024 * 1024) {
       toast.error(t('slide_editors.video.video_size_error'));
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
       return;
     }
 
@@ -76,6 +108,12 @@ const VideoEditor = ({ slide, onUpdate }) => {
       reader.onload = async (event) => {
         try {
           const base64Video = event.target.result;
+          
+          // Check if base64 string is too large (shouldn't happen, but safety check)
+          if (base64Video.length > 200 * 1024 * 1024) { // ~150MB base64
+            throw new Error('Video file is too large after encoding. Please use a smaller file.');
+          }
+          
           const response = await uploadVideoService(base64Video);
 
           if (response.success) {
@@ -90,16 +128,41 @@ const VideoEditor = ({ slide, onUpdate }) => {
           }
         } catch (error) {
           console.error('Upload error:', error);
-          const errorMessage = error?.response?.data?.error || error?.message || 'Failed to upload video';
-          toast.error(translateError(error, t, 'slide_editors.video.upload_failed'));
+          let errorMessage = 'Failed to upload video';
+          
+          // Extract more specific error messages
+          if (error?.response?.data?.error) {
+            errorMessage = error.response.data.error;
+          } else if (error?.response?.data?.message) {
+            errorMessage = error.response.data.message;
+          } else if (error?.message) {
+            errorMessage = error.message;
+          }
+          
+          // Check for specific error types
+          if (error?.response?.status === 413 || errorMessage.includes('too large') || errorMessage.includes('limit')) {
+            toast.error(t('slide_editors.video.video_size_error') + ' ' + errorMessage);
+          } else if (error?.response?.status === 400) {
+            toast.error(errorMessage || t('slide_editors.video.upload_failed'));
+          } else {
+            toast.error(translateError(error, t, 'slide_editors.video.upload_failed'));
+          }
         } finally {
           setIsUploading(false);
+          // Reset file input to allow re-upload
+          if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+          }
         }
       };
       
       reader.onerror = () => {
         toast.error(t('slide_editors.video.upload_video_error'));
         setIsUploading(false);
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
       };
       
       reader.readAsDataURL(file);
@@ -107,6 +170,10 @@ const VideoEditor = ({ slide, onUpdate }) => {
       console.error('Video processing error:', error);
       toast.error(translateError(error, t, 'slide_editors.video.upload_failed'));
       setIsUploading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -162,11 +229,17 @@ const VideoEditor = ({ slide, onUpdate }) => {
                 <div className="rounded-lg overflow-hidden border border-[#2A2A2A] bg-[#232323]">
                   <div className="aspect-video bg-black flex items-center justify-center">
                     <video
-                      src={videoUrl}
+                      src={cleanCloudinaryUrl(videoUrl)}
                       controls
                       className="w-full h-full"
                       onError={(e) => {
-                        toast.error(t('slide_editors.video.video_load_error'));
+                        // If video fails to load, try the original URL without transformations
+                        const cleanedUrl = cleanCloudinaryUrl(videoUrl);
+                        if (e.target.src !== videoUrl && cleanedUrl !== videoUrl) {
+                          e.target.src = videoUrl;
+                        } else {
+                          toast.error(t('slide_editors.video.video_load_error'));
+                        }
                       }}
                     >
                       {t('slide_editors.video.video_not_supported')}
@@ -253,6 +326,7 @@ const VideoEditor = ({ slide, onUpdate }) => {
                   <Upload className="h-4 w-4 mr-2" />
                   {isUploading ? t('slide_editors.video.uploading') : t('slide_editors.video.choose_file')}
                   <input
+                    ref={fileInputRef}
                     type="file"
                     accept="video/*"
                     onChange={handleVideoUpload}

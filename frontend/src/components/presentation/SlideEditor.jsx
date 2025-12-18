@@ -48,7 +48,7 @@ const SlideEditor = ({ slide, onUpdate, onClose, isOpen }) => {
       </div>
 
       {/* Content - Render different editors based on slide type */}
-      {slide?.type === 'multiple_choice' && (
+      {slide?.type === 'multiple_choice' && !slide?.quizSettings && (
         <MCQEditor slide={slide} onUpdate={onUpdate} />
       )}
 
@@ -89,7 +89,7 @@ const SlideEditor = ({ slide, onUpdate, onClose, isOpen }) => {
         <PinOnImageEditor slide={slide} onUpdate={onUpdate} />
       )}
 
-      {slide?.type === 'quiz' && (
+      {(slide?.type === 'quiz' || slide?.quizSettings) && (
         <QuizEditor slide={slide} onUpdate={onUpdate} />
       )}
 

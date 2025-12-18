@@ -266,6 +266,14 @@ const getPresentationById = asyncHandler(async (req, res, next) => {
         videoUrl: slide.videoUrl,
         videoPublicId: slide.videoPublicId,
         instructionContent: slide.instructionContent,
+        // Fields for "Bring Your Slides In" slide types
+        miroUrl: slide.miroUrl,
+        powerpointUrl: slide.powerpointUrl,
+        powerpointPublicId: slide.powerpointPublicId,
+        googleSlidesUrl: slide.googleSlidesUrl,
+        uploadedFileUrl: slide.uploadedFileUrl,
+        uploadedFilePublicId: slide.uploadedFilePublicId,
+        uploadedFileName: slide.uploadedFileName,
         createdAt: slide.createdAt,
         updatedAt: slide.updatedAt
       }))

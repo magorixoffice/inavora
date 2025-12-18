@@ -41,4 +41,11 @@ router.post('/video', uploadController.uploadVideo);
  */
 router.delete('/video', uploadController.deleteVideo);
 
+/**
+ * @route   POST /api/upload/powerpoint
+ * @desc    Upload PowerPoint file to Cloudinary
+ * @access  Private
+ */
+router.post('/powerpoint', uploadController.uploadPowerPoint);
+
 module.exports = router;

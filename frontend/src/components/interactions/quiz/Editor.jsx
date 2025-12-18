@@ -80,6 +80,7 @@ const QuizEditor = ({ slide, onUpdate }) => {
 
     onUpdate({
       ...slide,
+      type: 'quiz', // Ensure type is set to 'quiz'
       question: currentQuestion,
       quizSettings: {
         options: currentOptions,

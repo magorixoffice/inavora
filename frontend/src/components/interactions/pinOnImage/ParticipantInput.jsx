@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { MapPin, Send } from 'lucide-react';
+import { MapPin, Send, CheckCircle, XCircle } from 'lucide-react';
 
 const PinOnImageParticipantInput = ({ 
   slide, 
@@ -9,34 +9,111 @@ const PinOnImageParticipantInput = ({
   totalResponses = 0
 }) => {
   const [pin, setPin] = useState(null);
+  const [isCorrect, setIsCorrect] = useState(null);
   const imageRef = useRef(null);
   const containerRef = useRef(null);
 
   const imageUrl = slide?.pinOnImageSettings?.imageUrl;
+  const correctArea = slide?.pinOnImageSettings?.correctArea;
 
   useEffect(() => {
     // Reset pin when slide changes
     setPin(null);
   }, [slide?.id]);
 
+  // Helper function to get coordinates relative to the actual image (accounting for object-contain)
+  const getImageCoordinates = (clientX, clientY) => {
+    if (!imageRef.current || !imageRef.current.complete || imageRef.current.naturalWidth === 0) {
+      return { x: 0, y: 0 };
+    }
+    
+    const rect = imageRef.current.getBoundingClientRect();
+    const img = imageRef.current;
+    const naturalWidth = img.naturalWidth;
+    const naturalHeight = img.naturalHeight;
+    
+    if (naturalWidth === 0 || naturalHeight === 0) {
+      return { x: 0, y: 0 };
+    }
+    
+    // Calculate the actual displayed image dimensions (accounting for object-contain)
+    const displayedWidth = rect.width;
+    const displayedHeight = rect.height;
+    const imageAspect = naturalWidth / naturalHeight;
+    const containerAspect = displayedWidth / displayedHeight;
+    
+    let actualImageWidth, actualImageHeight, offsetX, offsetY;
+    
+    if (imageAspect > containerAspect) {
+      // Image is constrained by width
+      actualImageWidth = displayedWidth;
+      actualImageHeight = displayedWidth / imageAspect;
+      offsetX = 0;
+      offsetY = (displayedHeight - actualImageHeight) / 2;
+    } else {
+      // Image is constrained by height
+      actualImageWidth = displayedHeight * imageAspect;
+      actualImageHeight = displayedHeight;
+      offsetX = (displayedWidth - actualImageWidth) / 2;
+      offsetY = 0;
+    }
+    
+    // Calculate relative position within the actual image
+    const relativeX = (clientX - rect.left - offsetX) / actualImageWidth;
+    const relativeY = (clientY - rect.top - offsetY) / actualImageHeight;
+    
+    // Convert to percentage and clamp
+    const x = Math.max(0, Math.min(100, relativeX * 100));
+    const y = Math.max(0, Math.min(100, relativeY * 100));
+    
+    return { x, y };
+  };
+
   const handleImageClick = (e) => {
     if (hasSubmitted) return;
 
-    const rect = imageRef.current.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    const coords = getImageCoordinates(e.clientX, e.clientY);
+    setPin(coords);
+  };
 
-    // Clamp values to 0-100
-    const clampedX = Math.max(0, Math.min(100, x));
-    const clampedY = Math.max(0, Math.min(100, y));
-
-    setPin({ x: clampedX, y: clampedY });
+  // Check if pin is within correct area
+  const checkIfCorrect = (pinCoords) => {
+    if (!correctArea || !pinCoords) return null;
+    
+    const { x, y, width, height } = correctArea;
+    const pinX = pinCoords.x;
+    const pinY = pinCoords.y;
+    
+    // Check if pin is within the correct area rectangle
+    const isInArea = (
+      pinX >= x &&
+      pinX <= (x + width) &&
+      pinY >= y &&
+      pinY <= (y + height)
+    );
+    
+    return isInArea;
   };
 
   const handleSubmit = async () => {
     if (!pin) return;
+    
+    // Check if correct before submitting
+    const correct = checkIfCorrect(pin);
+    setIsCorrect(correct);
+    
     await onSubmit(pin);
   };
+
+  // Update correctness when pin changes
+  useEffect(() => {
+    if (pin && correctArea) {
+      setIsCorrect(checkIfCorrect(pin));
+    } else {
+      setIsCorrect(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pin, correctArea]);
 
   if (!imageUrl) {
     return (
@@ -59,7 +136,11 @@ const PinOnImageParticipantInput = ({
         {/* Instructions */}
         <p className="text-sm text-[#B0B0B0] text-center mb-6">
           {hasSubmitted 
-            ? '✓ Your response has been submitted'
+            ? (isCorrect !== null 
+                ? (isCorrect 
+                    ? '✓ Correct! Your pin is in the correct area' 
+                    : '✗ Incorrect. Your pin is not in the correct area')
+                  : '✓ Your response has been submitted')
             : 'Click on the image to place your pin'
           }
         </p>
@@ -81,36 +162,151 @@ const PinOnImageParticipantInput = ({
           />
 
           {/* Render Pin */}
-          {pin && (
-            <div
-              className="absolute transform -translate-x-1/2 -translate-y-full animate-bounce-in"
-              style={{
-                left: `${pin.x}%`,
-                top: `${pin.y}%`,
-              }}
-            >
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (!hasSubmitted) setPin(null);
+          {pin && (() => {
+            // Calculate pin position accounting for object-contain
+            if (!imageRef.current || !imageRef.current.complete) return null;
+            
+            const img = imageRef.current;
+            const rect = img.getBoundingClientRect();
+            const naturalWidth = img.naturalWidth;
+            const naturalHeight = img.naturalHeight;
+            
+            if (naturalWidth === 0 || naturalHeight === 0) return null;
+            
+            const imageAspect = naturalWidth / naturalHeight;
+            const containerAspect = rect.width / rect.height;
+            
+            let actualImageWidth, actualImageHeight, offsetX, offsetY;
+            
+            if (imageAspect > containerAspect) {
+              actualImageWidth = rect.width;
+              actualImageHeight = rect.width / imageAspect;
+              offsetX = 0;
+              offsetY = (rect.height - actualImageHeight) / 2;
+            } else {
+              actualImageWidth = rect.height * imageAspect;
+              actualImageHeight = rect.height;
+              offsetX = (rect.width - actualImageWidth) / 2;
+              offsetY = 0;
+            }
+            
+            const pinX = offsetX + (pin.x / 100) * actualImageWidth;
+            const pinY = offsetY + (pin.y / 100) * actualImageHeight;
+            
+            return (
+              <div
+                className="absolute transform -translate-x-1/2 -translate-y-full animate-bounce-in"
+                style={{
+                  left: `${pinX}px`,
+                  top: `${pinY}px`,
                 }}
-                disabled={hasSubmitted}
-                className={`relative ${!hasSubmitted && 'hover:scale-110'} transition-transform`}
-                title={hasSubmitted ? '' : 'Click to remove'}
               >
-                <MapPin 
-                  className="w-8 h-8 text-[#4CAF50] drop-shadow-lg" 
-                  fill="currentColor"
-                />
-              </button>
-            </div>
-          )}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!hasSubmitted) {
+                      setPin(null);
+                      setIsCorrect(null);
+                    }
+                  }}
+                  disabled={hasSubmitted}
+                  className={`relative ${!hasSubmitted && 'hover:scale-110'} transition-transform`}
+                  title={hasSubmitted ? '' : 'Click to remove'}
+                >
+                  <MapPin 
+                    className={`w-8 h-8 drop-shadow-lg ${
+                      isCorrect === true 
+                        ? 'text-[#4CAF50]' 
+                        : isCorrect === false 
+                          ? 'text-[#EF5350]' 
+                          : 'text-[#4CAF50]'
+                    }`}
+                    fill="currentColor"
+                  />
+                </button>
+              </div>
+            );
+          })()}
+          
+          {/* Render Correct Area Overlay */}
+          {correctArea && imageRef.current && imageRef.current.complete && (() => {
+            const img = imageRef.current;
+            const rect = img.getBoundingClientRect();
+            const naturalWidth = img.naturalWidth;
+            const naturalHeight = img.naturalHeight;
+            
+            if (naturalWidth === 0 || naturalHeight === 0) return null;
+            
+            const imageAspect = naturalWidth / naturalHeight;
+            const containerAspect = rect.width / rect.height;
+            
+            let actualImageWidth, actualImageHeight, offsetX, offsetY;
+            
+            if (imageAspect > containerAspect) {
+              actualImageWidth = rect.width;
+              actualImageHeight = rect.width / imageAspect;
+              offsetX = 0;
+              offsetY = (rect.height - actualImageHeight) / 2;
+            } else {
+              actualImageWidth = rect.height * imageAspect;
+              actualImageHeight = rect.height;
+              offsetX = (rect.width - actualImageWidth) / 2;
+              offsetY = 0;
+            }
+            
+            return (
+              <div
+                className="absolute border-2 border-[#4CAF50] bg-[#4CAF50]/10 pointer-events-none"
+                style={{
+                  left: `${offsetX + (correctArea.x / 100) * actualImageWidth}px`,
+                  top: `${offsetY + (correctArea.y / 100) * actualImageHeight}px`,
+                  width: `${(correctArea.width / 100) * actualImageWidth}px`,
+                  height: `${(correctArea.height / 100) * actualImageHeight}px`,
+                }}
+              />
+            );
+          })()}
         </div>
 
         {/* Pin Status */}
         {pin && !hasSubmitted && (
-          <div className="text-center text-sm text-[#B0B0B0] mb-4">
-            Pin placed
+          <div className="text-center text-sm mb-4">
+            {isCorrect === true && (
+              <div className="flex items-center justify-center gap-2 text-[#4CAF50]">
+                <CheckCircle className="w-4 h-4" />
+                <span>Pin is in the correct area!</span>
+              </div>
+            )}
+            {isCorrect === false && (
+              <div className="flex items-center justify-center gap-2 text-[#EF5350]">
+                <XCircle className="w-4 h-4" />
+                <span>Pin is not in the correct area</span>
+              </div>
+            )}
+            {isCorrect === null && (
+              <span className="text-[#B0B0B0]">Pin placed</span>
+            )}
+          </div>
+        )}
+        
+        {/* Submission Result */}
+        {hasSubmitted && isCorrect !== null && (
+          <div className={`rounded-xl p-4 mb-4 text-center ${
+            isCorrect
+              ? 'bg-[#1D2A20] border border-[#4CAF50]/30'
+              : 'bg-[#2A1F1F] border border-[#EF5350]/30'
+          }`}>
+            {isCorrect ? (
+              <div className="flex items-center justify-center gap-2 text-[#4CAF50]">
+                <CheckCircle className="w-5 h-5" />
+                <span className="font-semibold">Correct! Your pin is in the correct area.</span>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center gap-2 text-[#EF5350]">
+                <XCircle className="w-5 h-5" />
+                <span className="font-semibold">Incorrect. Your pin is not in the correct area.</span>
+              </div>
+            )}
           </div>
         )}
 

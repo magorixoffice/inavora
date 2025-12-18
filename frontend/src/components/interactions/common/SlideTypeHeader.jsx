@@ -1,4 +1,4 @@
-import { BarChart3, Cloud, MessageSquare, Sliders, ChartBarDecreasing, MessagesSquare, CircleQuestionMark, SquareStack, Grid2X2, MapPin, Brain, Trophy, FileText, Monitor, Presentation, Upload } from 'lucide-react';
+import { BarChart3, Cloud, MessageSquare, Sliders, ChartBarDecreasing, MessagesSquare, CircleQuestionMark, SquareStack, Grid2X2, MapPin, Brain, Trophy, FileText, Monitor, Presentation, Upload, Type, Image, Video, BookOpen } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 const slideTypeConfig = {
@@ -14,6 +14,14 @@ const slideTypeConfig = {
   pin_on_image: { labelKey: 'slide_types.pin_on_image', icon: MapPin, color: 'text-[#F44336]' },
   quiz: { labelKey: 'slide_types.quiz', icon: Brain, color: 'text-[#009688]' },
   leaderboard: { labelKey: 'slide_types.leaderboard', icon: Trophy, color: 'text-[#FFC107]' },
+  // Present Your Content section
+  text: { labelKey: 'slide_types.text', icon: Type, color: 'text-[#2196F3]' },
+  image: { labelKey: 'slide_types.image', icon: Image, color: 'text-[#4CAF50]' },
+  video: { labelKey: 'slide_types.video', icon: Video, color: 'text-[#F44336]' },
+  instruction: { labelKey: 'slide_types.instruction', icon: BookOpen, color: 'text-[#9C27B0]' },
+  // Challenge Mode section
+  pick_answer: { labelKey: 'slide_types.pick_answer', icon: CircleQuestionMark, color: 'text-[#2196F3]' },
+  type_answer: { labelKey: 'slide_types.type_answer', icon: MessageSquare, color: 'text-[#4CAF50]' },
   // Bring Your Slides In section
   miro: { labelKey: 'slide_types.miro', icon: FileText, color: 'text-[#009688]' },
   powerpoint: { labelKey: 'slide_types.powerpoint', icon: Presentation, color: 'text-[#D84315]' },

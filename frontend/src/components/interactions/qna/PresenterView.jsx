@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 // eslint-disable-next-line
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronUp, ChevronDown, Check } from 'lucide-react';
+import { ChevronUp, ChevronDown, Check, Send } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 const PresenterQnaView = ({
@@ -13,9 +13,15 @@ const PresenterQnaView = ({
 }) => {
   const { t } = useTranslation();
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [answerText, setAnswerText] = useState('');
 
   const unansweredQuestions = questions.filter(q => !q.answered);
   const currentQuestion = unansweredQuestions[currentIndex];
+
+  // Reset answer text when question changes
+  useEffect(() => {
+    setAnswerText('');
+  }, [currentQuestion?.id]);
 
   useEffect(() => {
     // Reset index when questions change
@@ -64,11 +70,19 @@ const PresenterQnaView = ({
 
   const handleMarkAnswered = () => {
     if (currentQuestion) {
-      onMarkAnswered(currentQuestion.id, true);
+      onMarkAnswered(currentQuestion.id, true, answerText.trim() || null);
+      setAnswerText('');
       // Move to next question if available
       if (currentIndex >= unansweredQuestions.length - 1 && currentIndex > 0) {
         setCurrentIndex(prev => prev - 1);
       }
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      handleMarkAnswered();
     }
   };
 
@@ -132,6 +146,37 @@ const PresenterQnaView = ({
             </AnimatePresence>
           </div>
 
+          {/* Answer Input */}
+          <div className="px-4 sm:px-6 mb-4">
+            <div className="max-w-2xl mx-auto">
+              <label className="block text-sm font-medium text-[#B0B0B0] mb-2">
+                {t('slide_editors.qna.answer_label') || 'Your Answer'}
+              </label>
+              <div className="flex gap-2">
+                <textarea
+                  value={answerText}
+                  onChange={(e) => setAnswerText(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={t('slide_editors.qna.answer_placeholder') || 'Type your answer here...'}
+                  className="flex-1 px-3 py-2 bg-[#2A2A2A] border border-[#3B3B3B] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4CAF50] focus:border-transparent resize-none text-sm"
+                  rows="2"
+                  maxLength={1000}
+                />
+                <button
+                  onClick={handleMarkAnswered}
+                  disabled={!currentQuestion}
+                  className="px-4 py-3 bg-gradient-to-r from-[#388E3C] to-[#2E7D32] hover:from-[#4CAF50] hover:to-[#388E3C] disabled:from-[#1F1F1F] disabled:to-[#1F1F1F] disabled:text-[#6C6C6C] text-white rounded-lg font-medium transition-all active:scale-95 shadow-lg shadow-[#4CAF50]/20 disabled:shadow-none flex items-center gap-2"
+                  title={t('slide_editors.qna.submit_answer') || 'Submit Answer (Ctrl+Enter)'}
+                >
+                  <Send className="h-4 w-4" />
+                </button>
+              </div>
+              <p className="text-xs text-[#6C6C6C] mt-1">
+                {answerText.length}/1000 {t('slide_editors.qna.characters') || 'characters'} • {t('slide_editors.qna.press_ctrl_enter') || 'Press Ctrl+Enter to submit'}
+              </p>
+            </div>
+          </div>
+
           {/* Navigation & Actions */}
           <div className="space-y-4 pb-2">
             {/* Navigation Arrows */}
@@ -155,21 +200,17 @@ const PresenterQnaView = ({
               </button>
             </div>
 
-            {/* Mark as Answered Button */}
+            {/* Mark as Answered Button (without answer) */}
             <div className="flex justify-center">
               <button
-                onClick={handleMarkAnswered}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#388E3C] to-[#2E7D32] hover:from-[#4CAF50] hover:to-[#388E3C] text-white rounded-full font-medium transition-all active:scale-95 text-sm shadow-lg shadow-[#4CAF50]/20"
+                onClick={() => onMarkAnswered(currentQuestion?.id, true, null)}
+                disabled={!currentQuestion}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#555555] to-[#444444] hover:from-[#666666] hover:to-[#555555] disabled:from-[#1F1F1F] disabled:to-[#1F1F1F] disabled:text-[#6C6C6C] text-white rounded-full font-medium transition-all active:scale-95 text-sm shadow-lg disabled:shadow-none"
               >
                 <Check className="h-4 w-4" />
-                <span>{t('slide_editors.qna.answered')}</span>
+                <span>{t('slide_editors.qna.mark_answered') || 'Mark as Answered'}</span>
               </button>
             </div>
-
-            {/* Keyboard Hint */}
-            <p className="text-center text-xs text-[#6C6C6C]">
-              {t('slide_editors.qna.press_enter_to_mark')} <kbd className="px-1.5 py-0.5 bg-[#2A2A2A] rounded text-[#E0E0E0] font-mono text-xs">Enter</kbd> {t('slide_editors.qna.to_mark_as_answered')}
-            </p>
           </div>
         </div>
       )}

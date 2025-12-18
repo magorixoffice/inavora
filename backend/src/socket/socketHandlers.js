@@ -56,6 +56,9 @@ function buildSlidePayload(slide) {
   const leaderboardSettings = slide.leaderboardSettings && typeof slide.leaderboardSettings.toObject === 'function'
     ? slide.leaderboardSettings.toObject()
     : (slide.leaderboardSettings || null);
+  const pinOnImageSettings = slide.pinOnImageSettings && typeof slide.pinOnImageSettings.toObject === 'function'
+    ? slide.pinOnImageSettings.toObject()
+    : (slide.pinOnImageSettings || null);
 
   return {
     id: slide._id,
@@ -77,9 +80,16 @@ function buildSlidePayload(slide) {
     openEndedSettings,
     qnaSettings,
     guessNumberSettings,
-    pinOnImageSettings: slide.pinOnImageSettings,
+    pinOnImageSettings,
     quizSettings,
     leaderboardSettings,
+    // Fields for text, image, and video slide types
+    textContent: slide.textContent,
+    imageUrl: slide.imageUrl,
+    imagePublicId: slide.imagePublicId,
+    videoUrl: slide.videoUrl,
+    videoPublicId: slide.videoPublicId,
+    instructionContent: slide.instructionContent,
     // Fields for "Bring Your Slides In" slide types
     miroUrl: slide.miroUrl,
     powerpointUrl: slide.powerpointUrl,
@@ -91,18 +101,38 @@ function buildSlidePayload(slide) {
   };
 }
 
-function buildQnaPayload(slideId) {
+async function buildQnaPayload(slideId) {
   const state = getQnaState(slideId) || { allowMultiple: false, questions: [] };
+  
+  // Fetch answerText from Response model for each question
+  const questionsWithAnswers = await Promise.all(
+    (Array.isArray(state.questions) ? state.questions : []).map(async (question) => {
+      try {
+        const response = await Response.findById(question.id);
+        if (response && response.presenterAnswer) {
+          return {
+            ...question,
+            answerText: response.presenterAnswer
+          };
+        }
+        return question;
+      } catch (error) {
+        // If Response not found or error, return question as-is
+        return question;
+      }
+    })
+  );
+  
   return {
     slideId,
     allowMultiple: Boolean(state.allowMultiple),
-    questions: Array.isArray(state.questions) ? state.questions : [],
+    questions: questionsWithAnswers,
     activeQuestionId: state.activeQuestionId || null
   };
 }
 
-function emitQnaState({ io, presentationId, slideId }) {
-  const payload = buildQnaPayload(slideId);
+async function emitQnaState({ io, presentationId, slideId }) {
+  const payload = await buildQnaPayload(slideId);
   io.to(`presentation-${presentationId}`).emit('qna-updated', payload);
   io.to(`presenter-${presentationId}`).emit('qna-updated', payload);
 }
@@ -304,12 +334,33 @@ const setupSocketHandlers = (io, socket) => {
           gridAxisYLabel: s.gridAxisYLabel,
           gridAxisRange: s.gridAxisRange,
           maxWordsPerParticipant: s.maxWordsPerParticipant,
-          qnaSettings: s.qnaSettings,
+          openEndedSettings: s.openEndedSettings && typeof s.openEndedSettings.toObject === 'function'
+            ? s.openEndedSettings.toObject()
+            : (s.openEndedSettings || {}),
+          qnaSettings: s.qnaSettings && typeof s.qnaSettings.toObject === 'function'
+            ? s.qnaSettings.toObject()
+            : (s.qnaSettings || {}),
           guessNumberSettings: s.type === 'guess_number'
-            ? (s.guessNumberSettings || { minValue: 1, maxValue: 10, correctAnswer: 5 })
+            ? (s.guessNumberSettings && typeof s.guessNumberSettings.toObject === 'function'
+                ? s.guessNumberSettings.toObject()
+                : (s.guessNumberSettings || { minValue: 1, maxValue: 10, correctAnswer: 5 }))
             : undefined,
-          pinOnImageSettings: s.pinOnImageSettings,
-          quizSettings: s.quizSettings,
+          pinOnImageSettings: s.pinOnImageSettings && typeof s.pinOnImageSettings.toObject === 'function'
+            ? s.pinOnImageSettings.toObject()
+            : (s.pinOnImageSettings || null),
+          quizSettings: s.quizSettings && typeof s.quizSettings.toObject === 'function'
+            ? s.quizSettings.toObject()
+            : (s.quizSettings || null),
+          leaderboardSettings: s.leaderboardSettings && typeof s.leaderboardSettings.toObject === 'function'
+            ? s.leaderboardSettings.toObject()
+            : (s.leaderboardSettings || null),
+          // Fields for text, image, and video slide types
+          textContent: s.textContent,
+          imageUrl: s.imageUrl,
+          imagePublicId: s.imagePublicId,
+          videoUrl: s.videoUrl,
+          videoPublicId: s.videoPublicId,
+          instructionContent: s.instructionContent,
           // Fields for "Bring Your Slides In" slide types
           miroUrl: s.miroUrl,
           powerpointUrl: s.powerpointUrl,
@@ -353,7 +404,7 @@ const setupSocketHandlers = (io, socket) => {
         });
 
         if (currentSlide.type === 'qna') {
-          emitQnaState({ io, presentationId, slideId: currentSlide._id });
+          await emitQnaState({ io, presentationId, slideId: currentSlide._id });
         }
       }
 
@@ -413,7 +464,7 @@ const setupSocketHandlers = (io, socket) => {
         io.to(`presentation-${presentationId}`).emit('slide-changed', payload);
 
         if (currentSlide.type === 'qna') {
-          emitQnaState({ io, presentationId, slideId: currentSlide._id });
+          await emitQnaState({ io, presentationId, slideId: currentSlide._id });
         }
       }
     } catch (error) {
@@ -472,8 +523,13 @@ const setupSocketHandlers = (io, socket) => {
       activeEntry.participants.set(socket.id, participantName || 'Anonymous');
 
       if (!presentation.isLive) {
+        // Check if presentation was previously live (has ended) vs never started
+        const wasLive = activePresentations.has(presentationKey);
         socket.emit('presentation-not-live', {
-          message: 'Presentation is not live yet. Waiting for presenter...'
+          message: wasLive 
+            ? 'The presentation has ended. Thank you for participating!'
+            : 'Presentation is not live yet. Waiting for presenter...',
+          ended: wasLive
         });
         return;
       }
@@ -627,7 +683,7 @@ const setupSocketHandlers = (io, socket) => {
           await response.save();
           submissionCount = 1;
         }
-      } else if (slide.type === 'open_ended') {
+      } else if (slide.type === 'open_ended' || slide.type === 'type_answer') {
         const submissionResult = await handleOpenEndedSubmission({
           existingResponse,
           presentationId,
@@ -746,7 +802,7 @@ const setupSocketHandlers = (io, socket) => {
     }
   });
 
-  socket.on('mark-qna-answered', async ({ presentationId, slideId, questionId, answered }) => {
+  socket.on('mark-qna-answered', async ({ presentationId, slideId, questionId, answered, answerText = null }) => {
     try {
       const slide = await Slide.findById(slideId);
       if (!slide || slide.type !== 'qna') {
@@ -754,14 +810,22 @@ const setupSocketHandlers = (io, socket) => {
         return;
       }
 
-      await Response.findByIdAndUpdate(questionId, { isAnswered: answered });
+      // Update Response model - store answer text in the answer field (it currently stores the question text)
+      const updateData = { isAnswered: answered };
+      if (answerText !== null && answerText !== undefined) {
+        // Store the presenter's answer - we'll keep the original question in a separate field if needed
+        // For now, we'll store the answer text in the answer field when answered
+        updateData.presenterAnswer = answerText.trim().slice(0, 1000);
+      }
 
-      const result = markQnaAnswered({ slideId: slide._id, questionId, answered });
+      await Response.findByIdAndUpdate(questionId, updateData);
+
+      const result = markQnaAnswered({ slideId: slide._id, questionId, answered, answerText });
       if (result.error) {
         Logger.warn(`In-memory QnA update failed: ${result.error}`);
       }
 
-      emitQnaState({ io, presentationId, slideId: slide._id });
+      await emitQnaState({ io, presentationId, slideId: slide._id });
 
       const responses = await Response.find({ slideId: slide._id });
       const results = buildResultsPayload(slide, responses);
@@ -789,7 +853,7 @@ const setupSocketHandlers = (io, socket) => {
         return;
       }
 
-      emitQnaState({ io, presentationId, slideId: slide._id });
+      await emitQnaState({ io, presentationId, slideId: slide._id });
     } catch (error) {
       Logger.error('Set Q&A active question error', error);
       socket.emit('error', { message: 'Failed to set active question' });
@@ -812,7 +876,7 @@ const setupSocketHandlers = (io, socket) => {
         return;
       }
 
-      emitQnaState({ io, presentationId, slideId: slide._id });
+      await emitQnaState({ io, presentationId, slideId: slide._id });
 
       const responses = [];
       const results = buildResultsPayload(slide, responses);
@@ -835,16 +899,16 @@ const setupSocketHandlers = (io, socket) => {
       }
 
       updateQnaSettings({ slideId: slide._id, allowMultiple });
-      emitQnaState({ io, presentationId, slideId: slide._id });
+      await emitQnaState({ io, presentationId, slideId: slide._id });
     } catch (error) {
       Logger.error('Update Q&A settings error', error);
       socket.emit('error', { message: 'Failed to update Q&A settings' });
     }
   });
 
-  socket.on('request-qna-state', ({ presentationId, slideId }) => {
+  socket.on('request-qna-state', async ({ presentationId, slideId }) => {
     try {
-      const payload = buildQnaPayload(slideId);
+      const payload = await buildQnaPayload(slideId);
       socket.emit('qna-updated', payload);
     } catch (error) {
       Logger.error('Request Q&A state error', error);

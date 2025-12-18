@@ -8,6 +8,14 @@ const GoogleSlidesEditor = ({ slide, onUpdate }) => {
   const [googleSlidesUrl, setGoogleSlidesUrl] = useState(slide?.googleSlidesUrl || '');
   const isMounted = useRef(false);
 
+  // Sync state when slide prop changes
+  useEffect(() => {
+    if (slide) {
+      setQuestion(slide.question || '');
+      setGoogleSlidesUrl(slide.googleSlidesUrl || '');
+    }
+  }, [slide?.id, slide?.question, slide?.googleSlidesUrl]);
+
   useEffect(() => {
     // Skip the first render to avoid infinite loop
     if (!isMounted.current) {
@@ -55,20 +63,57 @@ const GoogleSlidesEditor = ({ slide, onUpdate }) => {
         </p>
       </div>
 
-      {googleSlidesUrl && (
-        <div className="p-4 border-b border-[#2A2A2A]">
-          <h4 className="text-sm font-medium text-gray-300 mb-2">{t('slide_editors.google_slides.preview_title')}</h4>
-          <div className="aspect-video bg-[#1F1F1F] rounded overflow-hidden">
-            <iframe 
-              src={`${googleSlidesUrl.replace('/edit', '/embed')}?start=false&loop=false&delayms=3000`} 
-              title={t('slide_editors.google_slides.preview_title')} 
-              className="w-full h-full"
-              frameBorder="0" 
-              allowFullScreen
-            ></iframe>
+      {googleSlidesUrl && (() => {
+        // Validate URL before attempting to embed
+        const trimmedUrl = googleSlidesUrl.trim();
+        const isValidSlidesUrl = trimmedUrl.includes('docs.google.com/presentation/');
+        const isDriveUrl = trimmedUrl.includes('drive.google.com') && !trimmedUrl.includes('/presentation/');
+        
+        if (isDriveUrl) {
+          return (
+            <div className="p-4 border-b border-[#2A2A2A]">
+              <div className="bg-yellow-900/20 border border-yellow-600 rounded-md p-3">
+                <p className="text-yellow-400 text-sm">
+                  ⚠️ Google Drive URLs cannot be embedded. Please use a Google Slides share URL (docs.google.com/presentation/...)
+                </p>
+              </div>
+            </div>
+          );
+        }
+        
+        if (!isValidSlidesUrl) {
+          return (
+            <div className="p-4 border-b border-[#2A2A2A]">
+              <div className="bg-red-900/20 border border-red-600 rounded-md p-3">
+                <p className="text-red-400 text-sm">
+                  ⚠️ Invalid Google Slides URL. Must be a docs.google.com/presentation/ URL.
+                </p>
+              </div>
+            </div>
+          );
+        }
+        
+        // Clean URL for embedding
+        let embedUrl = trimmedUrl.replace('/edit', '/embed').replace('/view', '/embed');
+        embedUrl = embedUrl.split('?')[0];
+        embedUrl = `${embedUrl}?start=false&loop=false&delayms=3000`;
+        
+        return (
+          <div className="p-4 border-b border-[#2A2A2A]">
+            <h4 className="text-sm font-medium text-gray-300 mb-2">{t('slide_editors.google_slides.preview_title')}</h4>
+            <div className="aspect-video bg-[#1F1F1F] rounded overflow-hidden">
+              <iframe 
+                src={embedUrl}
+                title={t('slide_editors.google_slides.preview_title')} 
+                className="w-full h-full"
+                frameBorder="0" 
+                allowFullScreen
+                sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+              ></iframe>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 };

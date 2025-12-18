@@ -8,28 +8,71 @@ const AreaSelector = ({ imageUrl, onSave, onCancel, initialArea }) => {
   const imageRef = useRef(null);
   const containerRef = useRef(null);
 
+  // Helper function to get coordinates relative to the actual image (accounting for object-contain)
+  const getImageCoordinates = (clientX, clientY) => {
+    if (!imageRef.current || !imageRef.current.complete || imageRef.current.naturalWidth === 0) {
+      return { x: 0, y: 0 };
+    }
+    
+    const rect = imageRef.current.getBoundingClientRect();
+    const img = imageRef.current;
+    const naturalWidth = img.naturalWidth;
+    const naturalHeight = img.naturalHeight;
+    
+    if (naturalWidth === 0 || naturalHeight === 0) {
+      return { x: 0, y: 0 };
+    }
+    
+    // Calculate the actual displayed image dimensions (accounting for object-contain)
+    const displayedWidth = rect.width;
+    const displayedHeight = rect.height;
+    const imageAspect = naturalWidth / naturalHeight;
+    const containerAspect = displayedWidth / displayedHeight;
+    
+    let actualImageWidth, actualImageHeight, offsetX, offsetY;
+    
+    if (imageAspect > containerAspect) {
+      // Image is constrained by width
+      actualImageWidth = displayedWidth;
+      actualImageHeight = displayedWidth / imageAspect;
+      offsetX = 0;
+      offsetY = (displayedHeight - actualImageHeight) / 2;
+    } else {
+      // Image is constrained by height
+      actualImageWidth = displayedHeight * imageAspect;
+      actualImageHeight = displayedHeight;
+      offsetX = (displayedWidth - actualImageWidth) / 2;
+      offsetY = 0;
+    }
+    
+    // Calculate relative position within the actual image
+    const relativeX = (clientX - rect.left - offsetX) / actualImageWidth;
+    const relativeY = (clientY - rect.top - offsetY) / actualImageHeight;
+    
+    // Convert to percentage
+    const x = Math.max(0, Math.min(100, relativeX * 100));
+    const y = Math.max(0, Math.min(100, relativeY * 100));
+    
+    return { x, y };
+  };
+
   const handleMouseDown = (e) => {
     if (!imageRef.current) return;
     
-    const rect = imageRef.current.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    
-    setStartPoint({ x, y });
+    const coords = getImageCoordinates(e.clientX, e.clientY);
+    setStartPoint(coords);
     setIsSelecting(true);
   };
 
   const handleMouseMove = (e) => {
     if (!isSelecting || !startPoint || !imageRef.current) return;
     
-    const rect = imageRef.current.getBoundingClientRect();
-    const currentX = ((e.clientX - rect.left) / rect.width) * 100;
-    const currentY = ((e.clientY - rect.top) / rect.height) * 100;
+    const coords = getImageCoordinates(e.clientX, e.clientY);
     
-    const x = Math.min(startPoint.x, currentX);
-    const y = Math.min(startPoint.y, currentY);
-    const width = Math.abs(currentX - startPoint.x);
-    const height = Math.abs(currentY - startPoint.y);
+    const x = Math.min(startPoint.x, coords.x);
+    const y = Math.min(startPoint.y, coords.y);
+    const width = Math.abs(coords.x - startPoint.x);
+    const height = Math.abs(coords.y - startPoint.y);
     
     setSelection({ x, y, width, height });
   };
@@ -79,31 +122,58 @@ const AreaSelector = ({ imageUrl, onSave, onCancel, initialArea }) => {
           
           <div 
             ref={containerRef}
-            className="relative inline-block max-w-full"
+            className="relative w-full max-w-4xl mx-auto"
           >
             <img
               ref={imageRef}
               src={imageUrl}
               alt="Select area"
-              className="max-w-full h-auto cursor-crosshair select-none"
+              className="w-full h-auto cursor-crosshair select-none object-contain"
+              style={{ maxHeight: '60vh' }}
               onMouseDown={handleMouseDown}
               draggable={false}
             />
             
-            {/* Selection overlay */}
-            {selection && (
-              <div
-                className="absolute border-2 border-[#4FC3F7] bg-[#4FC3F7]/25"
-                style={{
-                  left: `${selection.x}%`,
-                  top: `${selection.y}%`,
-                  width: `${selection.width}%`,
-                  height: `${selection.height}%`,
-                  pointerEvents: 'none'
-                }}
-              >
-              </div>
-            )}
+            {/* Selection overlay - positioned relative to the actual image */}
+            {selection && imageRef.current && imageRef.current.complete && (() => {
+              const img = imageRef.current;
+              const rect = img.getBoundingClientRect();
+              const naturalWidth = img.naturalWidth;
+              const naturalHeight = img.naturalHeight;
+              
+              if (naturalWidth === 0 || naturalHeight === 0) return null;
+              
+              const imageAspect = naturalWidth / naturalHeight;
+              const containerAspect = rect.width / rect.height;
+              
+              let actualImageWidth, actualImageHeight, offsetX, offsetY;
+              
+              if (imageAspect > containerAspect) {
+                actualImageWidth = rect.width;
+                actualImageHeight = rect.width / imageAspect;
+                offsetX = 0;
+                offsetY = (rect.height - actualImageHeight) / 2;
+              } else {
+                actualImageWidth = rect.height * imageAspect;
+                actualImageHeight = rect.height;
+                offsetX = (rect.width - actualImageWidth) / 2;
+                offsetY = 0;
+              }
+              
+              return (
+                <div
+                  className="absolute border-2 border-[#4FC3F7] bg-[#4FC3F7]/25"
+                  style={{
+                    left: `${offsetX + (selection.x / 100) * actualImageWidth}px`,
+                    top: `${offsetY + (selection.y / 100) * actualImageHeight}px`,
+                    width: `${(selection.width / 100) * actualImageWidth}px`,
+                    height: `${(selection.height / 100) * actualImageHeight}px`,
+                    pointerEvents: 'none'
+                  }}
+                >
+                </div>
+              );
+            })()}
           </div>
         </div>
 

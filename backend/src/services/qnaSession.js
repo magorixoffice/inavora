@@ -131,7 +131,7 @@ function submitQuestion({ slideId, participantId, participantName, text, id }) {
   };
 }
 
-function markAnswered({ slideId, questionId, answered = true }) {
+function markAnswered({ slideId, questionId, answered = true, answerText = null }) {
   const session = getSession(slideId);
   if (!session) {
     return { error: 'Q&A session not initialized.' };
@@ -144,6 +144,12 @@ function markAnswered({ slideId, questionId, answered = true }) {
 
   target.answered = Boolean(answered);
   target.answeredAt = Date.now();
+  
+  // Store answer text if provided
+  if (answerText !== null && answerText !== undefined) {
+    const trimmed = (answerText || '').toString().trim();
+    target.answerText = trimmed.slice(0, 1000); // Limit to 1000 characters
+  }
 
   if (session.activeQuestionId === questionId) {
     session.activeQuestionId = null;

@@ -1,12 +1,124 @@
 import { useRef, useEffect, useState } from 'react';
 import { MapPin, Users } from 'lucide-react';
 
+// Helper component to position the correct area overlay accounting for object-contain letterboxing
+const CorrectAreaOverlay = ({ correctArea, imageRef }) => {
+  const [overlayStyle, setOverlayStyle] = useState(null);
+
+  useEffect(() => {
+    const updateOverlayPosition = () => {
+      if (!imageRef.current || !imageRef.current.complete) {
+        setOverlayStyle(null);
+        return;
+      }
+
+      const img = imageRef.current;
+      const rect = img.getBoundingClientRect();
+      const naturalWidth = img.naturalWidth;
+      const naturalHeight = img.naturalHeight;
+
+      if (naturalWidth === 0 || naturalHeight === 0) {
+        setOverlayStyle(null);
+        return;
+      }
+
+      // Calculate the actual displayed image dimensions (accounting for object-contain)
+      const imageAspect = naturalWidth / naturalHeight;
+      const containerAspect = rect.width / rect.height;
+
+      let actualImageWidth, actualImageHeight, offsetX, offsetY;
+
+      if (imageAspect > containerAspect) {
+        // Image is constrained by width
+        actualImageWidth = rect.width;
+        actualImageHeight = rect.width / imageAspect;
+        offsetX = 0;
+        offsetY = (rect.height - actualImageHeight) / 2;
+      } else {
+        // Image is constrained by height
+        actualImageWidth = rect.height * imageAspect;
+        actualImageHeight = rect.height;
+        offsetX = (rect.width - actualImageWidth) / 2;
+        offsetY = 0;
+      }
+
+      // Position overlay relative to the actual image area
+      setOverlayStyle({
+        left: `${offsetX + (correctArea.x / 100) * actualImageWidth}px`,
+        top: `${offsetY + (correctArea.y / 100) * actualImageHeight}px`,
+        width: `${(correctArea.width / 100) * actualImageWidth}px`,
+        height: `${(correctArea.height / 100) * actualImageHeight}px`,
+      });
+    };
+
+    updateOverlayPosition();
+
+    // Update on window resize
+    window.addEventListener('resize', updateOverlayPosition);
+    // Update when image loads
+    if (imageRef.current) {
+      imageRef.current.addEventListener('load', updateOverlayPosition);
+    }
+
+    return () => {
+      window.removeEventListener('resize', updateOverlayPosition);
+      if (imageRef.current) {
+        imageRef.current.removeEventListener('load', updateOverlayPosition);
+      }
+    };
+  }, [correctArea, imageRef]);
+
+  if (!overlayStyle) return null;
+
+  return (
+    <div
+      className="absolute border-2 border-[#4CAF50] bg-[#4CAF50]/10 pointer-events-none z-10"
+      style={overlayStyle}
+    />
+  );
+};
+
 const PinOnImagePresenterView = ({ slide, pinResults = [], totalResponses = 0 }) => {
   const imageRef = useRef(null);
   const [imageLoaded, setImageLoaded] = useState(false);
 
   const imageUrl = slide?.pinOnImageSettings?.imageUrl;
+  const correctArea = slide?.pinOnImageSettings?.correctArea;
   const hasResponses = totalResponses > 0 && Array.isArray(pinResults) && pinResults.length > 0;
+  
+  // Helper to calculate pin position accounting for object-contain
+  const getPinPosition = (pin) => {
+    if (!imageRef.current || !imageRef.current.complete) return { x: 0, y: 0 };
+    
+    const img = imageRef.current;
+    const rect = img.getBoundingClientRect();
+    const naturalWidth = img.naturalWidth;
+    const naturalHeight = img.naturalHeight;
+    
+    if (naturalWidth === 0 || naturalHeight === 0) return { x: 0, y: 0 };
+    
+    const imageAspect = naturalWidth / naturalHeight;
+    const containerAspect = rect.width / rect.height;
+    
+    let actualImageWidth, actualImageHeight, offsetX, offsetY;
+    
+    if (imageAspect > containerAspect) {
+      actualImageWidth = rect.width;
+      actualImageHeight = rect.width / imageAspect;
+      offsetX = 0;
+      offsetY = (rect.height - actualImageHeight) / 2;
+    } else {
+      actualImageWidth = rect.height * imageAspect;
+      actualImageHeight = rect.height;
+      offsetX = (rect.width - actualImageWidth) / 2;
+      offsetY = 0;
+    }
+    
+    return {
+      x: offsetX + (pin.x / 100) * actualImageWidth,
+      y: offsetY + (pin.y / 100) * actualImageHeight
+    };
+  };
 
   useEffect(() => {
     setImageLoaded(false);
@@ -20,30 +132,21 @@ const PinOnImagePresenterView = ({ slide, pinResults = [], totalResponses = 0 })
     );
   }
 
-  // Add slight jitter to overlapping pins for visibility
-  const jitteredPins = pinResults.map((pin, index) => {
-    // Check for nearby pins
-    const nearby = pinResults.filter((p, i) => {
-      if (i >= index) return false;
-      const distance = Math.sqrt(
-        Math.pow(p.x - pin.x, 2) + Math.pow(p.y - pin.y, 2)
-      );
-      return distance < 3; // Within 3% distance
-    });
-
-    if (nearby.length > 0) {
-      // Add small random offset
-      const angle = (index * 137.5) % 360; // Golden angle for distribution
-      const offset = 1.5;
-      return {
-        ...pin,
-        x: pin.x + Math.cos(angle * Math.PI / 180) * offset,
-        y: pin.y + Math.sin(angle * Math.PI / 180) * offset
-      };
-    }
-
-    return pin;
-  });
+  // Check if pin is in correct area
+  const isPinInCorrectArea = (pin) => {
+    if (!correctArea || !pin) return false;
+    
+    const { x, y, width, height } = correctArea;
+    const pinX = pin.x;
+    const pinY = pin.y;
+    
+    return (
+      pinX >= x &&
+      pinX <= (x + width) &&
+      pinY >= y &&
+      pinY <= (y + height)
+    );
+  };
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -83,23 +186,38 @@ const PinOnImagePresenterView = ({ slide, pinResults = [], totalResponses = 0 })
                     style={{ maxHeight: '600px' }}
                   />
 
+                  {/* Correct Area Overlay */}
+                  {correctArea && <CorrectAreaOverlay correctArea={correctArea} imageRef={imageRef} />}
+                  
                   {/* Render all pins */}
-                  {imageLoaded && jitteredPins.map((pin, index) => (
-                    <div
-                      key={index}
-                      className="absolute transform -translate-x-1/2 -translate-y-full animate-pin-drop"
-                      style={{
-                        left: `${pin.x}%`,
-                        top: `${pin.y}%`,
-                        animationDelay: `${index * 50}ms`
-                      }}
-                    >
-                      <MapPin 
-                        className="w-6 h-6 text-[#4CAF50] drop-shadow-lg opacity-80 hover:opacity-100 transition-opacity" 
-                        fill="currentColor"
-                      />
-                    </div>
-                  ))}
+                  {imageLoaded && imageRef.current && imageRef.current.complete && pinResults.map((pin, index) => {
+                    const position = getPinPosition(pin);
+                    const inCorrectArea = isPinInCorrectArea(pin);
+                    
+                    // Skip if position calculation failed
+                    if (position.x === 0 && position.y === 0 && pin.x !== 0 && pin.y !== 0) {
+                      return null;
+                    }
+                    
+                    return (
+                      <div
+                        key={index}
+                        className="absolute transform -translate-x-1/2 -translate-y-full animate-pin-drop"
+                        style={{
+                          left: `${position.x}px`,
+                          top: `${position.y}px`,
+                          animationDelay: `${index * 50}ms`
+                        }}
+                      >
+                        <MapPin 
+                          className={`w-6 h-6 drop-shadow-lg opacity-80 hover:opacity-100 transition-opacity ${
+                            inCorrectArea ? 'text-[#4CAF50]' : 'text-[#EF5350]'
+                          }`}
+                          fill="currentColor"
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -117,16 +235,58 @@ const PinOnImagePresenterView = ({ slide, pinResults = [], totalResponses = 0 })
                     <span className="text-sm text-[#B0B0B0]">Responses:</span>
                     <span className="text-lg font-bold text-[#E0E0E0]">{totalResponses}</span>
                   </div>
+                  {correctArea && (
+                    <>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-[#B0B0B0]">Correct:</span>
+                        <span className="text-lg font-bold text-[#4CAF50]">
+                          {pinResults.filter(p => isPinInCorrectArea(p)).length}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-[#B0B0B0]">Incorrect:</span>
+                        <span className="text-lg font-bold text-[#EF5350]">
+                          {pinResults.filter(p => !isPinInCorrectArea(p)).length}
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 
               {/* Legend */}
               <div className="mt-4 bg-[#1D2A20] border border-[#2E7D32]/30 rounded-xl p-4">
-                <div className="flex items-start gap-2">
-                  <MapPin className="w-5 h-5 text-[#4CAF50] flex-shrink-0 mt-0.5" fill="currentColor" />
-                  <div className="text-xs text-[#B0B0B0]">
-                    Each pin represents a participant's response. Overlapping pins are slightly offset for visibility.
-                  </div>
+                <div className="space-y-2">
+                  {correctArea && (
+                    <>
+                      <div className="flex items-start gap-2">
+                        <div className="w-4 h-4 border-2 border-[#4CAF50] bg-[#4CAF50]/10 flex-shrink-0 mt-0.5" />
+                        <div className="text-xs text-[#B0B0B0]">
+                          Green border shows the correct area
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <MapPin className="w-4 h-4 text-[#4CAF50] flex-shrink-0 mt-0.5" fill="currentColor" />
+                        <div className="text-xs text-[#B0B0B0]">
+                          Green pins are in the correct area
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <MapPin className="w-4 h-4 text-[#EF5350] flex-shrink-0 mt-0.5" fill="currentColor" />
+                        <div className="text-xs text-[#B0B0B0]">
+                          Red pins are outside the correct area
+                        </div>
+                      </div>
+                    </>
+                  )}
+                  {!correctArea && (
+                    <div className="flex items-start gap-2">
+                      <MapPin className="w-5 h-5 text-[#4CAF50] flex-shrink-0 mt-0.5" fill="currentColor" />
+                      <div className="text-xs text-[#B0B0B0]">
+                        Each pin represents a participant's response.
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

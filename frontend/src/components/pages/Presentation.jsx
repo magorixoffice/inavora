@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Save, Settings as SettingsIcon, Share2, X } from 'lucide-react';
+import { ArrowLeft, Save, Settings as SettingsIcon, Share2, X, Plus } from 'lucide-react';
 import SlideBar from '../presentation/SlideBar';
 import NewSlideDropdown from '../presentation/NewSlideDropdown';
 import SlideCanvas from '../presentation/SlideCanvas';
@@ -127,20 +127,29 @@ export default function Presentation() {
         setSkipDraftSave(false); // Allow saving to draft
       } else {
         // Map backend slides to frontend format (id -> _id)
-        const mappedSlides = (data.slides || []).map(slide => ({
-          ...slide,
-          id: slide.id || `slide-${Date.now()}-${Math.random()}`,
-          openEndedSettings: slide.type === 'open_ended'
-            ? (slide.openEndedSettings || defaultOpenEndedSettings())
-            : slide.openEndedSettings,
-          qnaSettings: slide.type === 'qna'
-            ? (slide.qnaSettings || { allowMultiple: false })
-            : slide.qnaSettings,
-          guessNumberSettings: slide.type === 'guess_number'
-            ? (slide.guessNumberSettings || { minValue: 1, maxValue: 10, correctAnswer: 5 })
-            : slide.guessNumberSettings,
-          _id: slide.id
-        }));
+        const mappedSlides = (data.slides || []).map(slide => {
+          // If slide has quizSettings but type is not 'quiz', treat it as a quiz slide
+          const isQuizSlide = slide.type === 'quiz' || (slide.quizSettings && slide.type === 'multiple_choice');
+          
+          return {
+            ...slide,
+            id: slide.id || `slide-${Date.now()}-${Math.random()}`,
+            // Override type if it has quizSettings but wrong type
+            type: isQuizSlide ? 'quiz' : slide.type,
+            openEndedSettings: slide.type === 'open_ended'
+              ? (slide.openEndedSettings || defaultOpenEndedSettings())
+              : slide.openEndedSettings,
+            qnaSettings: slide.type === 'qna'
+              ? (slide.qnaSettings || { allowMultiple: false })
+              : slide.qnaSettings,
+            guessNumberSettings: slide.type === 'guess_number'
+              ? (slide.guessNumberSettings || { minValue: 1, maxValue: 10, correctAnswer: 5 })
+              : slide.guessNumberSettings,
+            // Preserve quizSettings if they exist
+            quizSettings: slide.quizSettings,
+            _id: slide.id
+          };
+        });
 
         // Preserve the actual order from the backend - don't force instruction slides to the beginning
         // Just sort by the order property that comes from the backend
@@ -241,12 +250,14 @@ export default function Presentation() {
     setIsDirty(false);
     setDraftDialog({ open: false, draft: null });
     toast.success(t('toasts.presentation.draft_restored'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftDialog]);
 
   const handleDiscardDraft = useCallback(() => {
     presentationService.clearDraftFromLocalStorage();
     setDraftDialog({ open: false, draft: null });
     toast.success(t('toasts.presentation.draft_discarded'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Save to backend
@@ -335,6 +346,77 @@ export default function Presentation() {
         };
       }
 
+      // Normalize scales statements - filter out empty statements
+      if (slideWithOrder.type === 'scales' && Array.isArray(slideWithOrder.statements)) {
+        slideWithOrder.statements = slideWithOrder.statements
+          .map(stmt => {
+            // Handle both string and object formats
+            if (typeof stmt === 'string') return stmt.trim();
+            if (stmt && typeof stmt === 'object' && stmt.text) return stmt.text.trim();
+            return '';
+          })
+          .filter(stmt => stmt.length > 0); // Filter out empty statements
+      }
+
+      // Normalize ranking items - filter out empty items (preserve object structure)
+      if (slideWithOrder.type === 'ranking' && Array.isArray(slideWithOrder.rankingItems)) {
+        slideWithOrder.rankingItems = slideWithOrder.rankingItems
+          .filter(item => {
+            if (!item) return false;
+            const text = item.text || item.label || '';
+            return text.trim().length > 0;
+          })
+          .map(item => ({
+            id: item.id,
+            label: (item.text || item.label || '').trim()
+          }));
+      }
+
+      // Normalize hundred points items - filter out empty items (preserve object structure)
+      if (slideWithOrder.type === 'hundred_points' && Array.isArray(slideWithOrder.hundredPointsItems)) {
+        slideWithOrder.hundredPointsItems = slideWithOrder.hundredPointsItems
+          .filter(item => {
+            if (!item) return false;
+            const text = item.text || item.label || '';
+            return text.trim().length > 0;
+          })
+          .map(item => ({
+            id: item.id,
+            label: (item.text || item.label || '').trim()
+          }));
+      }
+
+      // Normalize grid items - filter out empty items (preserve object structure)
+      if (slideWithOrder.type === '2x2_grid' && Array.isArray(slideWithOrder.gridItems)) {
+        slideWithOrder.gridItems = slideWithOrder.gridItems
+          .filter(item => {
+            if (!item) return false;
+            const text = item.text || item.label || '';
+            return text.trim().length > 0;
+          })
+          .map(item => ({
+            id: item.id,
+            label: (item.text || item.label || '').trim() // Backend expects 'label' field
+          }));
+      }
+
+      // Normalize pin_on_image settings - ensure imageUrl is preserved
+      if (slideWithOrder.type === 'pin_on_image') {
+        // If pinOnImageSettings exists but imageUrl is missing, try to get it from top-level imageUrl
+        if (slideWithOrder.pinOnImageSettings) {
+          if (!slideWithOrder.pinOnImageSettings.imageUrl && slideWithOrder.imageUrl) {
+            slideWithOrder.pinOnImageSettings.imageUrl = slideWithOrder.imageUrl;
+          }
+        } else if (slideWithOrder.imageUrl) {
+          // If pinOnImageSettings doesn't exist but imageUrl does, create pinOnImageSettings
+          slideWithOrder.pinOnImageSettings = {
+            imageUrl: slideWithOrder.imageUrl,
+            imagePublicId: slideWithOrder.imagePublicId || null,
+            correctArea: null
+          };
+        }
+      }
+
       return slideWithOrder;
     });
 
@@ -405,68 +487,97 @@ export default function Presentation() {
           return false;
         }
 
-        if (!Array.isArray(slide.statements) || slide.statements.length === 0) {
-          toast.error(t('toasts.presentation.scales_statement_required', { number: slideNumber }));
-          return false;
-        }
+        // Normalize statements - handle both string and object formats
+        const normalizedStatements = Array.isArray(slide.statements) 
+          ? slide.statements.map(stmt => {
+              if (typeof stmt === 'string') return stmt.trim();
+              if (stmt && typeof stmt === 'object' && stmt.text) return stmt.text.trim();
+              return '';
+            }).filter(stmt => stmt.length > 0) // Filter out empty statements
+          : [];
 
-        // Check if all statements have text
-        const emptyStatement = slide.statements.findIndex(stmt => !stmt.text || stmt.text.trim() === '');
-        if (emptyStatement !== -1) {
-          toast.error(t('toasts.presentation.scales_empty_statement', { number: slideNumber, statementNumber: emptyStatement + 1 }));
+        if (normalizedStatements.length === 0) {
+          toast.error(t('toasts.presentation.scales_statement_required', { number: slideNumber }));
           return false;
         }
       }
 
       // Ranking validation
       if (slide.type === 'ranking') {
-        if (!Array.isArray(slide.rankingItems) || slide.rankingItems.length < 2) {
-          toast.error(t('toasts.presentation.ranking_min_items', { number: slideNumber }));
-          return false;
-        }
+        // Normalize ranking items - filter out empty items
+        const normalizedRankingItems = Array.isArray(slide.rankingItems)
+          ? slide.rankingItems
+              .map(item => {
+                if (!item) return null;
+                const text = item.text || item.label || '';
+                return text.trim();
+              })
+              .filter((text) => {
+                // Keep items with text
+                if (text && text.length > 0) return true;
+                return false;
+              })
+          : [];
 
-        // Check if all items have text
-        const emptyItem = slide.rankingItems.findIndex(item => !item.text || item.text.trim() === '');
-        if (emptyItem !== -1) {
-          toast.error(t('toasts.presentation.ranking_empty_item', { number: slideNumber, itemNumber: emptyItem + 1 }));
+        if (normalizedRankingItems.length < 2) {
+          toast.error(t('toasts.presentation.ranking_min_items', { number: slideNumber }));
           return false;
         }
       }
 
       // 100 Points validation
       if (slide.type === 'hundred_points') {
-        if (!Array.isArray(slide.hundredPointsItems) || slide.hundredPointsItems.length < 2) {
-          toast.error(t('toasts.presentation.hundred_points_min_items', { number: slideNumber }));
-          return false;
-        }
+        // Normalize hundred points items - filter out empty items
+        const normalizedHundredPointsItems = Array.isArray(slide.hundredPointsItems)
+          ? slide.hundredPointsItems
+              .map(item => {
+                if (!item) return null;
+                const text = item.text || item.label || '';
+                return text.trim();
+              })
+              .filter((text) => {
+                // Keep items with text
+                if (text && text.length > 0) return true;
+                return false;
+              })
+          : [];
 
-        // Check if all items have text
-        const emptyItem = slide.hundredPointsItems.findIndex(item => !item.text || item.text.trim() === '');
-        if (emptyItem !== -1) {
-          toast.error(t('toasts.presentation.hundred_points_empty_item', { number: slideNumber, itemNumber: emptyItem + 1 }));
+        if (normalizedHundredPointsItems.length < 2) {
+          toast.error(t('toasts.presentation.hundred_points_min_items', { number: slideNumber }));
           return false;
         }
       }
 
       // 2x2 Grid validation
       if (slide.type === '2x2_grid') {
-        if (!Array.isArray(slide.gridItems) || slide.gridItems.length < 1) {
-          toast.error(t('toasts.presentation.grid_min_items', { number: slideNumber }));
-          return false;
-        }
+        // Normalize grid items - filter out empty items
+        const normalizedGridItems = Array.isArray(slide.gridItems)
+          ? slide.gridItems
+              .map(item => {
+                if (!item) return null;
+                const text = item.text || item.label || '';
+                return text.trim();
+              })
+              .filter((text) => {
+                // Keep items with text
+                if (text && text.length > 0) return true;
+                return false;
+              })
+          : [];
 
-        // Check if all items have text
-        const emptyItem = slide.gridItems.findIndex(item => !item.text || item.text.trim() === '');
-        if (emptyItem !== -1) {
-          toast.error(t('toasts.presentation.grid_empty_item', { number: slideNumber, itemNumber: emptyItem + 1 }));
+        if (normalizedGridItems.length < 1) {
+          toast.error(t('toasts.presentation.grid_min_items', { number: slideNumber }));
           return false;
         }
       }
 
       // Pin on Image validation
-      if (slide.type === 'pin_on_image' && (!slide.imageUrl || slide.imageUrl.trim() === '')) {
-        toast.error(t('toasts.presentation.pin_image_url_required', { number: slideNumber }));
-        return false;
+      if (slide.type === 'pin_on_image') {
+        const imageUrl = slide.pinOnImageSettings?.imageUrl || slide.imageUrl || '';
+        if (!imageUrl || imageUrl.trim() === '') {
+          toast.error(t('toasts.presentation.pin_image_url_required', { number: slideNumber }));
+          return false;
+        }
       }
 
       // Text slide validation
@@ -500,9 +611,12 @@ export default function Presentation() {
       const updatedSlides = [];
       for (const slide of normalizedSlides) {
         if (slide._id) {
+          // Calculate correct type - if slide has quizSettings, ensure type is 'quiz'
+          const slideType = (slide.quizSettings && slide.type !== 'quiz') ? 'quiz' : slide.type;
+          
           // Update existing slide
           await presentationService.updateSlide(presentation.id, slide._id, {
-            type: slide.type,
+            type: slideType,
             question: slide.question,
             options: slide.options,
             minValue: slide.minValue,
@@ -512,41 +626,49 @@ export default function Presentation() {
             statements: slide.statements,
             rankingItems: slide.rankingItems,
             hundredPointsItems: slide.hundredPointsItems,
-            gridItems: slide.type === '2x2_grid' ? slide.gridItems : undefined,
-            gridAxisXLabel: slide.type === '2x2_grid' ? slide.gridAxisXLabel : undefined,
-            gridAxisYLabel: slide.type === '2x2_grid' ? slide.gridAxisYLabel : undefined,
-            gridAxisRange: slide.type === '2x2_grid' ? slide.gridAxisRange : undefined,
+            gridItems: slideType === '2x2_grid' ? slide.gridItems : undefined,
+            gridAxisXLabel: slideType === '2x2_grid' ? slide.gridAxisXLabel : undefined,
+            gridAxisYLabel: slideType === '2x2_grid' ? slide.gridAxisYLabel : undefined,
+            gridAxisRange: slideType === '2x2_grid' ? slide.gridAxisRange : undefined,
             maxWordsPerParticipant: slide.maxWordsPerParticipant,
-            openEndedSettings: slide.type === 'open_ended' ? slide.openEndedSettings : undefined,
-            qnaSettings: slide.type === 'qna' ? slide.qnaSettings : undefined,
-            guessNumberSettings: slide.type === 'guess_number' ? slide.guessNumberSettings : undefined,
-            pinOnImageSettings: slide.type === 'pin_on_image' ? slide.pinOnImageSettings : undefined,
-            quizSettings: slide.type === 'quiz' ? slide.quizSettings : undefined,
+            openEndedSettings: slideType === 'open_ended' ? slide.openEndedSettings : undefined,
+            qnaSettings: slideType === 'qna' ? slide.qnaSettings : undefined,
+            guessNumberSettings: slideType === 'guess_number' ? slide.guessNumberSettings : undefined,
+            pinOnImageSettings: slideType === 'pin_on_image' ? slide.pinOnImageSettings : undefined,
+            quizSettings: (slideType === 'quiz' || slide.quizSettings) ? slide.quizSettings : undefined,
             // Fields for text slide type
-            textContent: slide.type === 'text' ? slide.textContent : undefined,
+            textContent: slideType === 'text' ? slide.textContent : undefined,
             // Fields for image slide type
-            imageUrl: slide.type === 'image' ? slide.imageUrl : undefined,
-            imagePublicId: slide.type === 'image' ? slide.imagePublicId : undefined,
+            imageUrl: slideType === 'image' ? slide.imageUrl : undefined,
+            imagePublicId: slideType === 'image' ? slide.imagePublicId : undefined,
             // Fields for video slide type
-            videoUrl: slide.type === 'video' ? slide.videoUrl : undefined,
+            videoUrl: slideType === 'video' ? slide.videoUrl : undefined,
             // Fields for instruction slide type
-            instructionContent: slide.type === 'instruction' ? slide.instructionContent : undefined,
+            instructionContent: slideType === 'instruction' ? slide.instructionContent : undefined,
             // Fields for "Bring Your Slides In" slide types
-            ...(slide.type === 'miro' && slide.miroUrl && { miroUrl: slide.miroUrl }),
-            ...(slide.type === 'powerpoint' && slide.powerpointUrl && { powerpointUrl: slide.powerpointUrl }),
-            ...(slide.type === 'powerpoint' && slide.powerpointPublicId && { powerpointPublicId: slide.powerpointPublicId }),
-            ...(slide.type === 'google_slides' && slide.googleSlidesUrl && { googleSlidesUrl: slide.googleSlidesUrl }),
-            ...(slide.type === 'upload' && slide.uploadedFileUrl && { uploadedFileUrl: slide.uploadedFileUrl }),
-            ...(slide.type === 'upload' && slide.uploadedFilePublicId && { uploadedFilePublicId: slide.uploadedFilePublicId }),
-            ...(slide.type === 'upload' && slide.uploadedFileName && { uploadedFileName: slide.uploadedFileName }),
+            ...(slideType === 'miro' && { miroUrl: slide.miroUrl || '' }),
+            ...(slideType === 'powerpoint' && { 
+              // Don't save blob URLs - they're temporary and won't work after page reload
+              powerpointUrl: (slide.powerpointUrl && !slide.powerpointUrl.trim().startsWith('blob:')) ? slide.powerpointUrl : '',
+              ...(slide.powerpointPublicId && { powerpointPublicId: slide.powerpointPublicId })
+            }),
+            ...(slideType === 'google_slides' && { googleSlidesUrl: slide.googleSlidesUrl || '' }),
+            ...(slideType === 'upload' && { 
+              uploadedFileUrl: slide.uploadedFileUrl || '',
+              ...(slide.uploadedFilePublicId && { uploadedFilePublicId: slide.uploadedFilePublicId }),
+              uploadedFileName: slide.uploadedFileName || ''
+            }),
             // Add order property
             order: slide.order
           });
           updatedSlides.push(slide);
         } else {
+          // Calculate correct type - if slide has quizSettings, ensure type is 'quiz'
+          const slideType = (slide.quizSettings && slide.type !== 'quiz') ? 'quiz' : slide.type;
+          
           // Create new slide
           const response = await presentationService.createSlide(presentation.id, {
-            type: slide.type,
+            type: slideType,
             question: slide.question,
             options: slide.options,
             minValue: slide.minValue,
@@ -556,33 +678,38 @@ export default function Presentation() {
             statements: slide.statements,
             rankingItems: slide.rankingItems,
             hundredPointsItems: slide.hundredPointsItems,
-            gridItems: slide.type === '2x2_grid' ? slide.gridItems : undefined,
-            gridAxisXLabel: slide.type === '2x2_grid' ? slide.gridAxisXLabel : undefined,
-            gridAxisYLabel: slide.type === '2x2_grid' ? slide.gridAxisYLabel : undefined,
-            gridAxisRange: slide.type === '2x2_grid' ? slide.gridAxisRange : undefined,
+            gridItems: slideType === '2x2_grid' ? slide.gridItems : undefined,
+            gridAxisXLabel: slideType === '2x2_grid' ? slide.gridAxisXLabel : undefined,
+            gridAxisYLabel: slideType === '2x2_grid' ? slide.gridAxisYLabel : undefined,
+            gridAxisRange: slideType === '2x2_grid' ? slide.gridAxisRange : undefined,
             maxWordsPerParticipant: slide.maxWordsPerParticipant,
-            openEndedSettings: slide.type === 'open_ended' ? slide.openEndedSettings : undefined,
-            qnaSettings: slide.type === 'qna' ? slide.qnaSettings : undefined,
-            guessNumberSettings: slide.type === 'guess_number' ? slide.guessNumberSettings : undefined,
-            pinOnImageSettings: slide.type === 'pin_on_image' ? slide.pinOnImageSettings : undefined,
-            quizSettings: slide.type === 'quiz' ? slide.quizSettings : undefined,
+            openEndedSettings: slideType === 'open_ended' ? slide.openEndedSettings : undefined,
+            qnaSettings: slideType === 'qna' ? slide.qnaSettings : undefined,
+            guessNumberSettings: slideType === 'guess_number' ? slide.guessNumberSettings : undefined,
+            pinOnImageSettings: slideType === 'pin_on_image' ? slide.pinOnImageSettings : undefined,
+            quizSettings: (slideType === 'quiz' || slide.quizSettings) ? slide.quizSettings : undefined,
             // Fields for text slide type
-            textContent: slide.type === 'text' ? slide.textContent : undefined,
+            textContent: slideType === 'text' ? slide.textContent : undefined,
             // Fields for image slide type
-            imageUrl: slide.type === 'image' ? slide.imageUrl : undefined,
-            imagePublicId: slide.type === 'image' ? slide.imagePublicId : undefined,
+            imageUrl: slideType === 'image' ? slide.imageUrl : undefined,
+            imagePublicId: slideType === 'image' ? slide.imagePublicId : undefined,
             // Fields for video slide type
-            videoUrl: slide.type === 'video' ? slide.videoUrl : undefined,
+            videoUrl: slideType === 'video' ? slide.videoUrl : undefined,
             // Fields for instruction slide type
-            instructionContent: slide.type === 'instruction' ? slide.instructionContent : undefined,
+            instructionContent: slideType === 'instruction' ? slide.instructionContent : undefined,
             // Fields for "Bring Your Slides In" slide types
-            ...(slide.type === 'miro' && slide.miroUrl && { miroUrl: slide.miroUrl }),
-            ...(slide.type === 'powerpoint' && slide.powerpointUrl && { powerpointUrl: slide.powerpointUrl }),
-            ...(slide.type === 'powerpoint' && slide.powerpointPublicId && { powerpointPublicId: slide.powerpointPublicId }),
-            ...(slide.type === 'google_slides' && slide.googleSlidesUrl && { googleSlidesUrl: slide.googleSlidesUrl }),
-            ...(slide.type === 'upload' && slide.uploadedFileUrl && { uploadedFileUrl: slide.uploadedFileUrl }),
-            ...(slide.type === 'upload' && slide.uploadedFilePublicId && { uploadedFilePublicId: slide.uploadedFilePublicId }),
-            ...(slide.type === 'upload' && slide.uploadedFileName && { uploadedFileName: slide.uploadedFileName }),
+            ...(slideType === 'miro' && { miroUrl: slide.miroUrl || '' }),
+            ...(slideType === 'powerpoint' && { 
+              // Don't save blob URLs - they're temporary and won't work after page reload
+              powerpointUrl: (slide.powerpointUrl && !slide.powerpointUrl.trim().startsWith('blob:')) ? slide.powerpointUrl : '',
+              ...(slide.powerpointPublicId && { powerpointPublicId: slide.powerpointPublicId })
+            }),
+            ...(slideType === 'google_slides' && { googleSlidesUrl: slide.googleSlidesUrl || '' }),
+            ...(slideType === 'upload' && { 
+              uploadedFileUrl: slide.uploadedFileUrl || '',
+              ...(slide.uploadedFilePublicId && { uploadedFilePublicId: slide.uploadedFilePublicId }),
+              uploadedFileName: slide.uploadedFileName || ''
+            }),
             // Add order property
             order: slide.order
           });
@@ -1031,6 +1158,30 @@ export default function Presentation() {
 
           {/* Right Section */}
           <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+            {/* New Slide Button - Sticky in header */}
+            {activeTab === 'create' && (
+              <button
+                onClick={() => setShowNewSlideDropdown(!showNewSlideDropdown)}
+                className={`hidden sm:flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg transition-all active:scale-95 text-sm font-medium touch-manipulation ${
+                  showNewSlideDropdown
+                    ? 'bg-[#388E3C] text-white shadow-[0_4px_14px_rgba(56,142,60,0.35)]'
+                    : 'bg-[#2E7D32] text-white hover:bg-[#388E3C] shadow-[0_4px_14px_rgba(56,142,60,0.25)]'
+                }`}
+                title={showNewSlideDropdown ? t('presentation.new_slide_cancel') : t('presentation.new_slide')}
+              >
+                {showNewSlideDropdown ? (
+                  <>
+                    <X className="h-4 w-4" />
+                    <span className="hidden md:inline">{t('presentation.new_slide_cancel')}</span>
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4" />
+                    <span className="hidden md:inline">{t('presentation.new_slide')}</span>
+                  </>
+                )}
+              </button>
+            )}
             <button
               onClick={saveToBackend}
               className="p-2.5 sm:p-2.5 rounded-lg transition-all active:scale-95 bg-[#2A2A2A] hover:bg-[#333333] touch-manipulation"
@@ -1063,6 +1214,20 @@ export default function Presentation() {
             </button>
           </div>
         </div>
+
+        {/* New Slide Dropdown - Positioned below header when shown from header button */}
+        {showNewSlideDropdown && activeTab === 'create' && (
+          <div className="absolute top-full right-4 sm:right-6 md:right-auto md:left-auto z-50 mt-2">
+            <NewSlideDropdown
+              onSelectType={(type) => {
+                handleAddSlide(type);
+                setShowNewSlideDropdown(false);
+              }}
+              onClose={() => setShowNewSlideDropdown(false)}
+              user={user}
+            />
+          </div>
+        )}
 
         {/* Mobile Tabs Row - Only on mobile/tablet */}
         <div className="md:hidden border-t border-[#2A2A2A] px-3 sm:px-4 bg-[#1F1F1F]">

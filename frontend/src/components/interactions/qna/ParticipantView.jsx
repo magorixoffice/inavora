@@ -149,9 +149,17 @@ const ParticipantQnaView = ({
               return (
                 <div
                   key={q.id}
-                  className="p-4 bg-[#1F1F1F] border border-[#2A2A2A] rounded-xl space-y-2"
+                  className="p-4 bg-[#1F1F1F] border border-[#2A2A2A] rounded-xl space-y-3"
                 >
-                  <p className="text-[#E0E0E0] font-medium">{q.text}</p>
+                  <div>
+                    <p className="text-[#E0E0E0] font-medium mb-2">{q.text}</p>
+                    {q.answerText && (
+                      <div className="mt-3 p-3 bg-[#1D2A20] border border-[#2E7D32]/30 rounded-lg">
+                        <p className="text-xs font-semibold text-[#4CAF50] mb-1">Presenter's Answer:</p>
+                        <p className="text-[#E0E0E0] text-sm whitespace-pre-wrap">{q.answerText}</p>
+                      </div>
+                    )}
+                  </div>
                   <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${status.color}`}>
                     {status.text}
                   </div>

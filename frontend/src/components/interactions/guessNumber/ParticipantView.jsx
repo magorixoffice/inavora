@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Send } from 'lucide-react';
+import { Send, CheckCircle, XCircle } from 'lucide-react';
 
 const ParticipantGuessView = ({
   slide,
@@ -10,7 +10,11 @@ const ParticipantGuessView = ({
 }) => {
   const minValue = slide?.guessNumberSettings?.minValue ?? 1;
   const maxValue = slide?.guessNumberSettings?.maxValue ?? 10;
+  const correctAnswer = slide?.guessNumberSettings?.correctAnswer ?? null;
   const [guess, setGuess] = useState(minValue);
+  
+  // Check if guess is correct
+  const isCorrect = correctAnswer !== null && Number(guess) === Number(correctAnswer);
 
   const handleSubmit = () => {
     if (onSubmit && !hasSubmitted) {
@@ -68,16 +72,41 @@ const ParticipantGuessView = ({
         </div>
       ) : (
         <div className="space-y-6">
-          {/* Submission confirmation */}
-          <div className="bg-[#1D2A20] border border-[#4CAF50]/30 rounded-2xl p-8 text-center">
-            <div className="inline-block p-4 bg-[#2E7D32]/20 rounded-full mb-4">
-              <svg className="h-12 w-12 text-[#4CAF50]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <h3 className="text-2xl font-semibold text-[#E0E0E0] mb-2">Guess Submitted!</h3>
-            <p className="text-[#4CAF50]">You guessed: <span className="font-bold text-2xl">{guess}</span></p>
-            <p className="text-sm text-[#B0B0B0] mt-2">Viewing live distribution...</p>
+          {/* Submission confirmation with correct/incorrect feedback */}
+          <div className={`rounded-2xl p-8 text-center ${
+            isCorrect
+              ? 'bg-[#1D2A20] border-2 border-[#2E7D32]/30'
+              : 'bg-[#2A1F1F] border-2 border-[#EF5350]/30'
+          }`}>
+            {isCorrect ? (
+              <>
+                <CheckCircle className="h-16 w-16 sm:h-20 sm:w-20 text-[#4CAF50] mx-auto mb-4" />
+                <h3 className="text-2xl sm:text-3xl font-bold text-[#4CAF50] mb-2">
+                  Correct! 🎉
+                </h3>
+                <p className="text-lg sm:text-xl text-[#E0E0E0] mb-1">
+                  You guessed: <span className="font-bold text-2xl sm:text-3xl text-[#4CAF50]">{guess}</span>
+                </p>
+                <p className="text-sm text-[#B0B0B0] mt-2">Great job! Viewing live distribution...</p>
+              </>
+            ) : (
+              <>
+                <XCircle className="h-16 w-16 sm:h-20 sm:w-20 text-[#EF5350] mx-auto mb-4" />
+                <h3 className="text-2xl sm:text-3xl font-bold text-[#EF5350] mb-2">
+                  Incorrect
+                </h3>
+                <p className="text-lg sm:text-xl text-[#E0E0E0] mb-1">
+                  You guessed: <span className="font-bold text-2xl sm:text-3xl text-[#EF5350]">{guess}</span>
+                </p>
+                {correctAnswer !== null && (
+                  <div className="mt-4 p-3 bg-[#1D2A20]/50 border border-[#4CAF50]/30 rounded-lg">
+                    <p className="text-sm text-[#4CAF50] font-semibold mb-1">Correct answer:</p>
+                    <p className="text-xl font-bold text-[#E0E0E0]">{correctAnswer}</p>
+                  </div>
+                )}
+                <p className="text-sm text-[#B0B0B0] mt-2">Better luck next time! Viewing live distribution...</p>
+              </>
+            )}
           </div>
 
           {/* Live Distribution */}
@@ -98,21 +127,51 @@ const ParticipantGuessView = ({
                     const maxCount = Math.max(...Object.values(guessDistribution), 1);
                     const percentage = (count / maxCount) * 100;
                     const isYourGuess = Number(value) === guess;
+                    const isCorrectAnswer = correctAnswer !== null && Number(value) === Number(correctAnswer);
                     
                     return (
                       <div key={value} className="space-y-1">
                         <div className="flex items-center justify-between">
-                          <span className={`text-sm font-medium ${isYourGuess ? 'text-[#4CAF50]' : 'text-[#E0E0E0]'}`}>
-                            {value} {isYourGuess && '← Your guess'}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-sm font-medium ${
+                              isCorrectAnswer 
+                                ? 'text-[#4CAF50]' 
+                                : isYourGuess 
+                                  ? isCorrect 
+                                    ? 'text-[#4CAF50]' 
+                                    : 'text-[#EF5350]'
+                                  : 'text-[#E0E0E0]'
+                            }`}>
+                              {value}
+                            </span>
+                            {isCorrectAnswer && (
+                              <span className="px-2 py-1 rounded bg-[#4CAF50]/20 text-[#4CAF50] text-xs font-bold">
+                                ✓ Correct
+                              </span>
+                            )}
+                            {isYourGuess && !isCorrectAnswer && (
+                              <span className="px-2 py-1 rounded bg-[#EF5350]/20 text-[#EF5350] text-xs font-bold">
+                                ✗ Your Guess
+                              </span>
+                            )}
+                            {isYourGuess && isCorrectAnswer && (
+                              <span className="px-2 py-1 rounded bg-[#4CAF50]/20 text-[#4CAF50] text-xs font-bold">
+                                ✓ Your Guess (Correct)
+                              </span>
+                            )}
+                          </div>
                           <span className="text-sm font-bold text-[#E0E0E0]">{count}</span>
                         </div>
                         <div className="h-6 bg-[#2A2A2A] rounded-lg overflow-hidden border border-[#2F2F2F]">
                           <div
                             className={`h-full transition-all duration-500 flex items-center justify-end pr-2 ${
-                              isYourGuess
+                              isCorrectAnswer
                                 ? 'bg-gradient-to-r from-[#4CAF50] to-[#388E3C]'
-                                : 'bg-gradient-to-r from-[#388E3C]/60 to-[#4CAF50]/60'
+                                : isYourGuess
+                                  ? isCorrect
+                                    ? 'bg-gradient-to-r from-[#4CAF50] to-[#388E3C]'
+                                    : 'bg-gradient-to-r from-[#EF5350] to-[#D32F2F]'
+                                  : 'bg-gradient-to-r from-[#388E3C]/60 to-[#4CAF50]/60'
                             }`}
                             style={{ width: `${percentage}%` }}
                           />
@@ -126,7 +185,7 @@ const ParticipantGuessView = ({
         </div>
       )}
 
-      <style jsx>{`
+      <style>{`
         .slider::-webkit-slider-thumb {
           appearance: none;
           width: 24px;

@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import toast from 'react-hot-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { getSocketUrl } from '../../utils/config';
@@ -11,6 +11,7 @@ import HundredPointsParticipantInput from '../interactions/hundredPoints/Partici
 import WordCloudParticipantInput from '../interactions/wordCloud/ParticipantInput';
 import ScalesParticipantInput from '../interactions/scales/ParticipantInput';
 import ParticipantOpenEnded from '../interactions/openEnded/ParticipantView';
+import TypeAnswerParticipantView from '../interactions/typeAnswer/participant/ParticipantView';
 import {
   defaultOpenEndedSettings,
   mergeOpenEndedState,
@@ -29,14 +30,25 @@ import PowerPointParticipantView from '../interactions/powerpoint/participant/Pa
 import GoogleSlidesParticipantView from '../interactions/googleSlides/participant/ParticipantView';
 import UploadParticipantView from '../interactions/upload/participant/ParticipantView';
 import InstructionParticipantView from '../interactions/instruction/participant/ParticipantView';
+import SlideCanvas from '../presentation/SlideCanvas';
 
 const JoinPresentation = () => {
   let { code } = useParams();
   code = atob(code);
+  const navigate = useNavigate();
   const { currentUser } = useAuth();
   const { t } = useTranslation();
+  const [isLeaving, setIsLeaving] = useState(false);
   const [socket, setSocket] = useState(null);
-  const [participantName, setParticipantName] = useState('');
+  const [participantName, setParticipantName] = useState(() => {
+    // Try to restore participant name from localStorage
+    const storedName = localStorage.getItem(`participantName_${code}`);
+    if (storedName) {
+      return storedName;
+    }
+    // Fallback to current user's display name
+    return '';
+  });
   const [participantId] = useState(() => {
     // Get or create participant ID
     let id = localStorage.getItem('participantId');
@@ -87,6 +99,7 @@ const JoinPresentation = () => {
   const [submissionCount, setSubmissionCount] = useState(0);
   const [isWaiting, setIsWaiting] = useState(false);
   const [waitingMessage, setWaitingMessage] = useState('');
+  const [presentationEnded, setPresentationEnded] = useState(false);
   const [openEndedResponses, setOpenEndedResponses] = useState([]);
   const [openEndedSettings, setOpenEndedSettings] = useState(defaultOpenEndedSettings);
   const [participantRanking, setParticipantRanking] = useState([]);
@@ -130,12 +143,32 @@ const JoinPresentation = () => {
     };
   }, []);
 
-  // Auto-populate name for logged-in users and auto-join if already logged in
+  // Auto-populate name and auto-join if conditions are met
   useEffect(() => {
-    if (currentUser && currentUser.displayName && socket && socketConnected && !hasJoined && !isAutoJoining) {
+    // Don't auto-join if presentation has ended
+    if (presentationEnded) {
+      return;
+    }
+    
+    // Check if we should auto-join
+    // Auto-join if: socket connected, not already joined, not currently joining, and has a name
+    const hasName = participantName.trim() || currentUser?.displayName;
+    const shouldAutoJoin = 
+      socket && 
+      socketConnected && 
+      !hasJoined && 
+      !isAutoJoining && 
+      hasName;
+    
+    if (shouldAutoJoin) {
       setIsAutoJoining(true);
       setJoinError(null); // Reset any previous errors
-      setParticipantName(currentUser.displayName);
+      
+      // Use stored name or current user's name
+      const nameToUse = participantName.trim() || currentUser?.displayName || '';
+      if (nameToUse && nameToUse !== participantName) {
+        setParticipantName(nameToUse);
+      }
       
       // Set a timeout to reset isAutoJoining if no response is received
       const timeoutTimer = setTimeout(() => {
@@ -148,15 +181,21 @@ const JoinPresentation = () => {
       // Auto-join after socket is connected
       socket.emit('join-presentation', {
         accessCode: code,
-        participantName: currentUser.displayName,
+        participantName: nameToUse,
         participantId
       });
 
       return () => clearTimeout(timeoutTimer);
     }
-  }, [currentUser, socket, socketConnected, code, participantId, hasJoined, isAutoJoining]);
+  }, [currentUser, socket, socketConnected, code, participantId, hasJoined, isAutoJoining, participantName, presentationEnded]);
 
   const handleJoin = () => {
+    // Don't allow joining if presentation has ended
+    if (presentationEnded) {
+      toast.error('The presentation has ended. You cannot rejoin.');
+      return;
+    }
+    
     // Reset any previous errors
     setJoinError(null);
     
@@ -175,12 +214,36 @@ const JoinPresentation = () => {
       return;
     }
 
+    // Store participant name in localStorage
+    localStorage.setItem(`participantName_${code}`, participantName.trim());
+
     console.log('Manually joining presentation with code:', code);
     socket.emit('join-presentation', {
       accessCode: code,
       participantName: participantName.trim(),
       participantId
     });
+  };
+
+  const handleLeave = () => {
+    if (isLeaving) return;
+    
+    setIsLeaving(true);
+    
+    // Disconnect socket
+    if (socket) {
+      socket.emit('leave-presentation', {
+        presentationId: presentation?.id,
+        participantId
+      });
+      socket.disconnect();
+    }
+    
+    // Clear stored participant data for this presentation
+    localStorage.removeItem(`participantName_${code}`);
+    
+    // Navigate to home
+    navigate('/');
   };
 
   useEffect(() => {
@@ -214,6 +277,17 @@ const JoinPresentation = () => {
       setSelectedAnswer(null);
       setTextAnswer('');
       setHasSubmitted(Boolean(data.hasSubmitted));
+      
+      // Store participant name in localStorage for this presentation
+      const nameToStore = data.participantName || participantName;
+      if (nameToStore) {
+        localStorage.setItem(`participantName_${code}`, nameToStore);
+      }
+      
+      // Store participant name in localStorage for this presentation
+      if (data.participantName || participantName) {
+        localStorage.setItem(`participantName_${code}`, data.participantName || participantName);
+      }
       if (data.participantResponse?.submissionCount) {
         setSubmissionCount(data.participantResponse.submissionCount);
       } else {
@@ -247,9 +321,21 @@ const JoinPresentation = () => {
 
     socket.on('presentation-not-live', (data) => {
       setIsAutoJoining(false);
-      setIsWaiting(true);
-      setWaitingMessage(data.message || 'Presentation is not live yet. Waiting for presenter...');
-      toast(data.message || 'Presentation is not live yet. Waiting for presenter...');
+      // Check if presentation has ended (not just not started)
+      if (data.ended) {
+        setPresentationEnded(true);
+        setIsWaiting(true);
+        setWaitingMessage(data.message || 'The presentation has ended. Thank you for participating!');
+        // Don't show toast for ended presentations to avoid spam
+      } else if (!presentationEnded) {
+        // Only update waiting state if presentation hasn't ended
+        setIsWaiting(true);
+        setWaitingMessage(data.message || 'Presentation is not live yet. Waiting for presenter...');
+        // Only show toast once when first entering waiting state
+        if (!isWaiting) {
+          toast(data.message || 'Presentation is not live yet. Waiting for presenter...');
+        }
+      }
     });
 
     socket.on('slide-changed', (data) => {
@@ -350,8 +436,10 @@ const JoinPresentation = () => {
     });
 
     socket.on('presentation-ended', () => {
+      setPresentationEnded(true);
       setIsWaiting(true);
-      setWaitingMessage('Waiting for the presenter to change slide...');
+      setWaitingMessage('The presentation has ended. Thank you for participating!');
+      setIsAutoJoining(false);
     });
 
     socket.on('open-ended-settings-updated', (data) => {
@@ -466,14 +554,76 @@ const JoinPresentation = () => {
     // eslint-disable-next-line
   }, [socket, currentSlide]);
 
+  // Prevent page refresh/navigation when joined
+  useEffect(() => {
+    if (!hasJoined) return;
+
+    const handleBeforeUnload = (e) => {
+      // Prevent refresh/navigation
+      e.preventDefault();
+      e.returnValue = t('join_presentation.leave_warning') || 'Are you sure you want to leave? You will be disconnected from the presentation.';
+      return e.returnValue;
+    };
+
+    const handlePopState = (e) => {
+      // Prevent browser back button
+      if (hasJoined && !isLeaving) {
+        window.history.pushState(null, '', window.location.href);
+        // Show confirmation
+        if (window.confirm(t('join_presentation.leave_warning') || 'Are you sure you want to leave? You will be disconnected from the presentation.')) {
+          handleLeave();
+        }
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasJoined, isLeaving]);
+
 
   const handleSubmitResponse = (answerPayload) => {
-    if (!currentSlide) return;
+    if (!currentSlide) {
+      console.error('handleSubmitResponse: No current slide');
+      return;
+    }
+    if (!socket) {
+      console.error('handleSubmitResponse: No socket connection');
+      toast.error('Connection not available. Please refresh the page.');
+      return;
+    }
+    if (!presentation || !presentation.id) {
+      console.error('handleSubmitResponse: No presentation ID');
+      toast.error('Presentation not available. Please refresh the page.');
+      return;
+    }
     if (currentSlide.type === 'multiple_choice') {
       if (!selectedAnswer) {
         toast.error(t('toasts.join_presentation.select_answer'));
         return;
       }
+      console.log('Submitting multiple_choice answer:', selectedAnswer);
+      socket.emit('submit-response', {
+        presentationId: presentation.id,
+        slideId: currentSlide.id,
+        participantId,
+        participantName,
+        answer: selectedAnswer
+      });
+      setHasSubmitted(true);
+      toast.success(t('toasts.join_presentation.response_submitted'));
+    } else if (currentSlide.type === 'pick_answer') {
+      if (!selectedAnswer) {
+        toast.error(t('toasts.join_presentation.select_answer'));
+        return;
+      }
+      console.log('Submitting pick_answer answer:', selectedAnswer);
       socket.emit('submit-response', {
         presentationId: presentation.id,
         slideId: currentSlide.id,
@@ -531,6 +681,22 @@ const JoinPresentation = () => {
         answer: trimmed.slice(0, 300)
       });
       setHasSubmitted(true);
+    } else if (currentSlide.type === 'type_answer') {
+      const trimmed = (openEndedAnswer || '').trim();
+      if (!trimmed) {
+        toast.error(t('toasts.join_presentation.enter_response'));
+        return;
+      }
+      console.log('Submitting type_answer answer:', trimmed);
+      socket.emit('submit-response', {
+        presentationId: presentation.id,
+        slideId: currentSlide.id,
+        participantId,
+        participantName,
+        answer: trimmed.slice(0, 300)
+      });
+      setHasSubmitted(true);
+      toast.success(t('toasts.join_presentation.response_submitted'));
     } else if (currentSlide.type === 'ranking') {
       if (!Array.isArray(answerPayload) || answerPayload.length === 0) {
         toast.error(t('toasts.join_presentation.rank_at_least_one'));
@@ -669,6 +835,20 @@ const JoinPresentation = () => {
             participantId={participantId}
             onVote={handleVoteOpenEndedResponse}
             totalResponses={totalResponses}
+          />
+        );
+      case 'type_answer':
+        return (
+          <TypeAnswerParticipantView
+            slide={currentSlide}
+            responses={openEndedResponses}
+            answer={openEndedAnswer}
+            onAnswerChange={setOpenEndedAnswer}
+            onSubmit={handleSubmitResponse}
+            hasSubmitted={hasSubmitted}
+            isVotingEnabled={openEndedSettings.isVotingEnabled}
+            participantId={participantId}
+            onVote={handleVoteOpenEndedResponse}
           />
         );
       case 'scales':
@@ -813,6 +993,30 @@ const JoinPresentation = () => {
             presentation={presentation}
           />
         );
+      case 'video':
+        return (
+          <SlideCanvas
+            slide={currentSlide}
+            presentation={presentation}
+            isPresenter={false}
+          />
+        );
+      case 'text':
+        return (
+          <SlideCanvas
+            slide={currentSlide}
+            presentation={presentation}
+            isPresenter={false}
+          />
+        );
+      case 'image':
+        return (
+          <SlideCanvas
+            slide={currentSlide}
+            presentation={presentation}
+            isPresenter={false}
+          />
+        );
       default:
         return (
           <div className="text-center">
@@ -938,9 +1142,18 @@ const JoinPresentation = () => {
         </div>
 
         <div className="bg-white/5 border border-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-12 max-w-md w-full text-center relative z-10">
-          <h2 className="text-2xl font-bold text-white">
+          <h2 className="text-2xl font-bold text-white mb-6">
             {waitingMessage || t('join_presentation.waiting_for_presentation')}
           </h2>
+          {presentationEnded && (
+            <button
+              onClick={handleLeave}
+              className="mt-4 px-6 py-3 bg-[#EF5350] hover:bg-[#E53935] text-white font-medium rounded-lg transition duration-200 inline-flex items-center gap-2"
+            >
+              <LogOut className="w-5 h-5" />
+              {t('join_presentation.leave')}
+            </button>
+          )}
         </div>
       </div>
     );
@@ -961,6 +1174,17 @@ const JoinPresentation = () => {
               <div className="w-2 h-2 bg-[#4CAF50] rounded-full animate-pulse"></div>
               <span className="text-xs sm:text-sm font-medium text-[#4CAF50]">{t('presentation.live')}</span>
             </div>
+            <button
+              onClick={handleLeave}
+              disabled={isLeaving}
+              className="flex items-center gap-2 px-4 py-2 bg-[#2A1F1F] hover:bg-[#3A2F2F] border border-[#EF5350]/30 hover:border-[#EF5350]/50 text-[#EF5350] rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              title={t('join_presentation.leave_presentation') || 'Leave Presentation'}
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="text-sm font-medium hidden sm:inline">
+                {t('join_presentation.leave') || 'Leave'}
+              </span>
+            </button>
           </div>
         </div>
       </div>
