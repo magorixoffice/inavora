@@ -111,7 +111,7 @@ const Subscription = ({ institution, stats, onRefresh, onAddUser }) => {
                     }
                 } catch (error) {
                     console.error('Error fetching plans:', error);
-                    toast.error('Failed to load plans');
+                    toast.error(t('institution_admin.failed_to_load_plans'));
                 } finally {
                     setLoadingPlans(false);
                 }
@@ -167,14 +167,14 @@ const Subscription = ({ institution, stats, onRefresh, onAddUser }) => {
 
         // Validate plan selection
         if (!plan) {
-            toast.error('Please select a plan');
+            toast.error(t('institution_admin.please_select_plan'));
             return;
         }
 
         // Validate custom plan
         if (plan.isCustom) {
             if (!customUserCount || customUserCount < (plan.minUsers || 10)) {
-                toast.error(`Minimum ${plan.minUsers || 10} users required for Custom plan`);
+                toast.error(t('institution_admin.minimum_users_required', { count: plan.minUsers || 10 }));
                 return;
             }
         }
@@ -273,8 +273,8 @@ const Subscription = ({ institution, stats, onRefresh, onAddUser }) => {
                             if (verifyResponse.data.success) {
                                 toast.success(
                                     isExpired 
-                                        ? (t('institution_admin.subscription_renewed_success') || 'Subscription renewed successfully!')
-                                        : (t('institution_admin.subscription_upgraded_success') || 'Subscription upgraded successfully!')
+                                        ? t('institution_admin.subscription_renewed_success')
+                                        : t('institution_admin.subscription_upgraded_success')
                                 );
                                 setShowPlanSelection(false);
                                 setSelectedPlan(null);
@@ -353,30 +353,30 @@ const Subscription = ({ institution, stats, onRefresh, onAddUser }) => {
                 <div className="bg-white/5 border border-white/10 rounded-xl p-6 backdrop-blur-sm">
                     <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                         <Building2 className="w-5 h-5" style={{ color: secondaryColor }} />
-                        Institution Information
+                        {t('institution_admin.institution_information')}
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
-                            <p className="text-gray-400 text-sm mb-1">Institution Name</p>
-                            <p className="text-white font-medium">{institution?.name || 'N/A'}</p>
+                            <p className="text-gray-400 text-sm mb-1">{t('institution_admin.institution_name')}</p>
+                            <p className="text-white font-medium">{institution?.name || t('institution_admin.not_available')}</p>
                         </div>
                         <div>
-                            <p className="text-gray-400 text-sm mb-1">Institution Email</p>
+                            <p className="text-gray-400 text-sm mb-1">{t('institution_admin.institution_email')}</p>
                             <div className="flex items-center gap-2">
                                 <Mail className="w-4 h-4 text-gray-400" />
-                                <p className="text-white">{institution?.email || 'N/A'}</p>
+                                <p className="text-white">{institution?.email || t('institution_admin.not_available')}</p>
                             </div>
                         </div>
                         <div>
-                            <p className="text-gray-400 text-sm mb-1">Admin Name</p>
+                            <p className="text-gray-400 text-sm mb-1">{t('institution_admin.admin_name')}</p>
                             <div className="flex items-center gap-2">
                                 <User className="w-4 h-4 text-gray-400" />
-                                <p className="text-white">{institution?.adminName || 'N/A'}</p>
+                                <p className="text-white">{institution?.adminName || t('institution_admin.not_available')}</p>
                             </div>
                         </div>
                         <div>
-                            <p className="text-gray-400 text-sm mb-1">Admin Email</p>
-                            <p className="text-white">{institution?.adminEmail || 'N/A'}</p>
+                            <p className="text-gray-400 text-sm mb-1">{t('institution_admin.admin_email')}</p>
+                            <p className="text-white">{institution?.adminEmail || t('institution_admin.not_available')}</p>
                         </div>
                     </div>
                 </div>
@@ -385,7 +385,7 @@ const Subscription = ({ institution, stats, onRefresh, onAddUser }) => {
                 <div className="bg-white/5 border border-white/10 rounded-xl p-6 backdrop-blur-sm">
                     <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                         <Receipt className="w-5 h-5" style={{ color: secondaryColor }} />
-                        Payment History
+                        {t('institution_admin.payment_history')}
                     </h3>
                     {loadingPayments ? (
                         <div className="flex items-center justify-center py-8">
@@ -424,7 +424,7 @@ const Subscription = ({ institution, stats, onRefresh, onAddUser }) => {
                                             {payment.orderId && (
                                                 <>
                                                     <span>•</span>
-                                                    <span className="font-mono text-xs">Order: {payment.orderId.slice(-8)}</span>
+                                                    <span className="font-mono text-xs">{t('institution_admin.order_label')}: {payment.orderId.slice(-8)}</span>
                                                 </>
                                             )}
                                         </div>
@@ -437,7 +437,7 @@ const Subscription = ({ institution, stats, onRefresh, onAddUser }) => {
                                             : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
                                     }`}>
                                         {payment.status === 'captured' && <CheckCircle className="w-3 h-3 inline mr-1" />}
-                                        {payment.status}
+                                        {payment.status === 'captured' ? t('institution_admin.payment_status_captured') : payment.status === 'failed' ? t('institution_admin.payment_status_failed') : payment.status}
                                     </span>
                                 </div>
                             ))}
@@ -445,7 +445,7 @@ const Subscription = ({ institution, stats, onRefresh, onAddUser }) => {
                     ) : (
                         <div className="text-center py-8">
                             <Receipt className="w-12 h-12 mx-auto mb-3 text-gray-500 opacity-50" />
-                            <p className="text-gray-400">No payment history found</p>
+                            <p className="text-gray-400">{t('institution_admin.no_payment_history')}</p>
                         </div>
                     )}
                 </div>
@@ -466,9 +466,9 @@ const Subscription = ({ institution, stats, onRefresh, onAddUser }) => {
                             <div>
                                 <h3 className="text-2xl font-bold text-white mb-2 flex items-center gap-3">
                                     <CreditCard className="w-6 h-6" style={{ color: secondaryColor }} />
-                                    Current Plan: {currentPlanName}
+                                    {t('institution_admin.current_plan_label')}: {currentPlanName}
                                 </h3>
-                                <p className="text-gray-400">Your active subscription details and features</p>
+                                <p className="text-gray-400">{t('institution_admin.subscription_details_features')}</p>
                             </div>
                             <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold ${
                                 isActive && !isExpired
@@ -478,37 +478,37 @@ const Subscription = ({ institution, stats, onRefresh, onAddUser }) => {
                                     : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
                             }`}>
                                 {isActive && !isExpired && <CheckCircle className="w-4 h-4 mr-2" />}
-                                {isExpired ? (t('institution_admin.expired') || 'Expired') : (isActive ? 'Active' : subscription.status)}
+                                {isExpired ? t('institution_admin.expired') : (isActive ? t('institution_admin.active') : subscription.status)}
                             </span>
                         </div>
 
                         {/* Current Plan Pricing & Details */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                             <div className="bg-black/30 rounded-xl p-4 border border-white/10">
-                                <p className="text-gray-400 text-sm mb-2">Plan Price</p>
+                                <p className="text-gray-400 text-sm mb-2">{t('institution_admin.plan_price')}</p>
                                 {(() => {
                                     const price = subscription?.planDetails?.prices?.yearly || 0;
                                     const priceInRupees = (price / 100).toLocaleString('en-IN');
                                     return (
                                         <div>
                                             <p className="text-2xl font-bold text-white">₹{priceInRupees}</p>
-                                            <p className="text-xs text-gray-400">per year</p>
+                                            <p className="text-xs text-gray-400">{t('institution_admin.per_year')}</p>
                                         </div>
                                     );
                                 })()}
                             </div>
                             <div className="bg-black/30 rounded-xl p-4 border border-white/10">
-                                <p className="text-gray-400 text-sm mb-2">Max Users</p>
-                                <p className="text-2xl font-bold text-white">{subscription.maxUsers || 'Unlimited'}</p>
-                                <p className="text-xs text-gray-400">users included</p>
+                                <p className="text-gray-400 text-sm mb-2">{t('institution_admin.max_users')}</p>
+                                <p className="text-2xl font-bold text-white">{subscription.maxUsers || t('institution_admin.unlimited')}</p>
+                                <p className="text-xs text-gray-400">{t('institution_admin.users_included')}</p>
                             </div>
                             <div className="bg-black/30 rounded-xl p-4 border border-white/10">
-                                <p className="text-gray-400 text-sm mb-2">Billing Cycle</p>
-                                <p className="text-2xl font-bold text-white capitalize">{subscription.billingCycle || 'Yearly'}</p>
-                                <p className="text-xs text-gray-400">renewal period</p>
+                                <p className="text-gray-400 text-sm mb-2">{t('institution_admin.billing_cycle_label')}</p>
+                                <p className="text-2xl font-bold text-white capitalize">{subscription.billingCycle || t('institution_admin.yearly')}</p>
+                                <p className="text-xs text-gray-400">{t('institution_admin.renewal_period')}</p>
                             </div>
                             <div className="bg-black/30 rounded-xl p-4 border border-white/10">
-                                <p className="text-gray-400 text-sm mb-2">Renewal Date</p>
+                                <p className="text-gray-400 text-sm mb-2">{t('institution_admin.renewal_date_label')}</p>
                                 <p className="text-lg font-bold text-white">
                                     {subscription.endDate 
                                         ? new Date(subscription.endDate).toLocaleDateString('en-US', {
@@ -516,11 +516,11 @@ const Subscription = ({ institution, stats, onRefresh, onAddUser }) => {
                                             day: 'numeric',
                                             year: 'numeric'
                                         })
-                                        : 'N/A'}
+                                        : t('institution_admin.not_available')}
                                 </p>
                                 {daysRemaining !== null && (
                                     <p className={`text-xs mt-1 ${daysRemaining <= 30 ? 'text-yellow-400' : 'text-gray-400'}`}>
-                                        {daysRemaining > 0 ? `${daysRemaining} days left` : 'Expired'}
+                                        {daysRemaining > 0 ? `${daysRemaining} ${t('institution_admin.days_left')}` : t('institution_admin.expired')}
                                     </p>
                                 )}
                             </div>
@@ -529,7 +529,7 @@ const Subscription = ({ institution, stats, onRefresh, onAddUser }) => {
                         {/* Current Plan Features */}
                         {subscription?.planDetails?.features ? (
                             <div className="bg-black/20 rounded-xl p-6 border border-white/10">
-                                <h4 className="text-lg font-semibold text-white mb-4">Plan Features</h4>
+                                <h4 className="text-lg font-semibold text-white mb-4">{t('institution_admin.plan_features')}</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                                     {subscription.planDetails.features.map((feature, idx) => (
                                         <div key={idx} className="flex items-center gap-2">
@@ -559,7 +559,7 @@ const Subscription = ({ institution, stats, onRefresh, onAddUser }) => {
                                     }}
                                 >
                                     <Plus className="w-5 h-5" />
-                                    {t('institution_admin.add_users') || 'Add Users'}
+                                    {t('institution_admin.add_users')}
                                 </button>
                             )}
                             {isExpired && (
@@ -583,7 +583,7 @@ const Subscription = ({ institution, stats, onRefresh, onAddUser }) => {
                                     }}
                                 >
                                     <RefreshCw className="w-5 h-5" />
-                                    {t('institution_admin.renew_subscription') || 'Renew Subscription'}
+                                    {t('institution_admin.renew_subscription')}
                                 </button>
                             )}
                             {showRenewalWarning && !isExpired && (
@@ -607,12 +607,12 @@ const Subscription = ({ institution, stats, onRefresh, onAddUser }) => {
                                     {renewalLoading ? (
                                         <>
                                             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                            {t('institution_admin.processing') || 'Processing...'}
+                                            {t('institution_admin.processing')}
                                         </>
                                     ) : (
                                         <>
                                             <RefreshCw className="w-5 h-5" />
-                                            {t('institution_admin.renew_now') || 'Renew Now'}
+                                            {t('institution_admin.renew_now')}
                                         </>
                                     )}
                                 </button>
@@ -624,8 +624,8 @@ const Subscription = ({ institution, stats, onRefresh, onAddUser }) => {
                     {showPlanSelection && isExpired && (
                         <div className="bg-white/5 border border-white/10 rounded-xl p-6 backdrop-blur-sm">
                             <div className="mb-6">
-                                <h3 className="text-2xl font-bold text-white mb-2">Select Plan</h3>
-                                <p className="text-gray-400">Choose the subscription plan that fits your needs</p>
+                                <h3 className="text-2xl font-bold text-white mb-2">{t('institution_admin.select_plan')}</h3>
+                                <p className="text-gray-400">{t('institution_admin.select_plan_description')}</p>
                             </div>
                             <button
                                 onClick={() => {
@@ -692,47 +692,47 @@ const Subscription = ({ institution, stats, onRefresh, onAddUser }) => {
                                                                 </span>
                                                             </div>
                                                             <p className="text-xs text-gray-400 break-words">
-                                                                (Base ₹{basePrice.toLocaleString('en-IN')} + {currentUserCount} users × ₹{perUserPrice.toLocaleString('en-IN')})
+                                                                {t('institution_admin.custom_plan_price_breakdown', { base: basePrice.toLocaleString('en-IN'), count: currentUserCount, perUser: perUserPrice.toLocaleString('en-IN') })}
                                                             </p>
                                                         </div>
-                                                        <div className="mb-4">
-                                                            <p className="text-sm text-gray-300 mb-2">1 Admin Dashboard +</p>
-                                                            <div className="flex items-center gap-2">
-                                                                <input
-                                                                    type="number"
-                                                                    value={isSelected ? customUserCount : (plan.minUsers || 10)}
-                                                                    onChange={(e) => {
-                                                                        const inputValue = e.target.value;
-                                                                        if (inputValue === '') {
-                                                                            setCustomUserCount('');
-                                                                            if (!isSelected) {
-                                                                                handleSelectPlan(plan);
-                                                                            }
-                                                                            return;
-                                                                        }
-                                                                        const value = parseInt(inputValue) || 0;
-                                                                        setCustomUserCount(value);
-                                                                        if (!isSelected) {
-                                                                            handleSelectPlan(plan);
-                                                                        }
-                                                                    }}
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        if (!isSelected) {
-                                                                            handleSelectPlan(plan);
-                                                                        }
-                                                                    }}
-                                                                    min={plan.minUsers || 10}
-                                                                    className="w-20 px-3 py-2 bg-black/30 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none text-sm"
-                                                                />
-                                                                <span className="text-sm text-gray-300">users</span>
-                                                            </div>
-                                                            <div className="mt-2 min-w-0">
-                                                                <p className="text-lg sm:text-xl font-bold text-teal-400 break-all overflow-hidden">
-                                                                    ₹{totalPrice.toLocaleString('en-IN')} Total
-                                                                </p>
-                                                            </div>
-                                                        </div>
+                                        <div className="mb-4">
+                                            <p className="text-sm text-gray-300 mb-2">1 {t('institution_admin.admin_dashboard')} +</p>
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="number"
+                                                    value={isSelected ? customUserCount : (plan.minUsers || 10)}
+                                                    onChange={(e) => {
+                                                        const inputValue = e.target.value;
+                                                        if (inputValue === '') {
+                                                            setCustomUserCount('');
+                                                            if (!isSelected) {
+                                                                handleSelectPlan(plan);
+                                                            }
+                                                            return;
+                                                        }
+                                                        const value = parseInt(inputValue) || 0;
+                                                        setCustomUserCount(value);
+                                                        if (!isSelected) {
+                                                            handleSelectPlan(plan);
+                                                        }
+                                                    }}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (!isSelected) {
+                                                            handleSelectPlan(plan);
+                                                        }
+                                                    }}
+                                                    min={plan.minUsers || 10}
+                                                    className="w-20 px-3 py-2 bg-black/30 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none text-sm"
+                                                />
+                                                <span className="text-sm text-gray-300">{t('institution_admin.users')}</span>
+                                            </div>
+                                            <div className="mt-2 min-w-0">
+                                                <p className="text-lg sm:text-xl font-bold text-teal-400 break-all overflow-hidden">
+                                                    ₹{totalPrice.toLocaleString('en-IN')} {t('institution_admin.total')}
+                                                </p>
+                                            </div>
+                                        </div>
                                                     </>
                                                 ) : (
                                                     <>
@@ -740,10 +740,10 @@ const Subscription = ({ institution, stats, onRefresh, onAddUser }) => {
                                                             <span className="text-3xl font-bold">
                                                                 ₹{basePrice.toLocaleString('en-IN')}
                                                             </span>
-                                                            <span className="text-gray-400">/yr</span>
+                                                            <span className="text-gray-400">{t('institution_admin.per_year_short')}</span>
                                                         </div>
                                                         <div className="mb-4">
-                                                            <p className="text-sm text-gray-400">1 Admin Dashboard + {plan.maxUsers} users</p>
+                                                            <p className="text-sm text-gray-400">{t('institution_admin.admin_dashboard_plus_users', { count: plan.maxUsers })}</p>
                                                         </div>
                                                     </>
                                                 )}
@@ -768,7 +768,7 @@ const Subscription = ({ institution, stats, onRefresh, onAddUser }) => {
                                                                 }
                                                                 // Validate custom plan
                                                                 if (!customUserCount || customUserCount < (plan.minUsers || 10)) {
-                                                                    toast.error(`Minimum ${plan.minUsers || 10} users required for Custom plan`);
+                                                                    toast.error(t('institution_admin.minimum_users_required', { count: plan.minUsers || 10 }));
                                                                     return;
                                                                 }
                                                             }
@@ -793,7 +793,7 @@ const Subscription = ({ institution, stats, onRefresh, onAddUser }) => {
                                                             }
                                                         }}
                                                     >
-                                                        {renewalLoading ? 'Processing...' : (isExpired ? 'Renew' : 'Upgrade')}
+                                                        {renewalLoading ? t('institution_admin.processing') : (isExpired ? t('institution_admin.renew') : t('institution_admin.upgrade'))}
                                                     </button>
                                                 )}
                                             </div>
@@ -811,8 +811,8 @@ const Subscription = ({ institution, stats, onRefresh, onAddUser }) => {
                                 <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-start gap-3">
                                     <AlertCircle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
                                     <div className="flex-1">
-                                        <h4 className="font-semibold text-red-400 mb-1">{t('institution_admin.subscription_expired') || 'Subscription Expired'}</h4>
-                                        <p className="text-sm text-gray-300">{t('institution_admin.subscription_expired_message') || 'Your subscription has expired. Please renew to continue using all features.'}</p>
+                                        <h4 className="font-semibold text-red-400 mb-1">{t('institution_admin.subscription_expired')}</h4>
+                                        <p className="text-sm text-gray-300">{t('institution_admin.subscription_expired_message')}</p>
                                     </div>
                                 </div>
                             )}
@@ -879,12 +879,12 @@ const Subscription = ({ institution, stats, onRefresh, onAddUser }) => {
                                 </div>
                                 <div className="flex items-center justify-between mt-2">
                                     <span className="text-xs text-gray-400">
-                                        {Math.round(userUsagePercent)}% of plan limit used
+                                        {t('institution_admin.percent_plan_limit_used', { percent: Math.round(userUsagePercent) })}
                                     </span>
                                     {userUsagePercent >= 75 && (
                                         <span className="text-xs text-yellow-400 flex items-center gap-1">
                                             <AlertCircle className="w-3 h-3" />
-                                            {userUsagePercent >= 90 ? 'Critical' : 'Warning'}
+                                            {userUsagePercent >= 90 ? t('institution_admin.critical') : t('institution_admin.warning')}
                                         </span>
                                     )}
                                 </div>
@@ -905,7 +905,7 @@ const Subscription = ({ institution, stats, onRefresh, onAddUser }) => {
                                     <p className="text-2xl font-bold text-white">{usageStats?.activeUsers || stats?.activeUsers || 0}</p>
                                 </div>
                                 <div className="p-4 bg-black/20 rounded-lg border border-white/5">
-                                    <p className="text-gray-400 text-xs mb-1">Available Users</p>
+                                    <p className="text-gray-400 text-xs mb-1">{t('institution_admin.available_users')}</p>
                                     <p className="text-2xl font-bold text-white">
                                         {Math.max(0, (subscription.maxUsers || 10) - currentUsers)}
                                     </p>
@@ -960,13 +960,13 @@ const Subscription = ({ institution, stats, onRefresh, onAddUser }) => {
                                                 <div>
                                                     <p className="text-sm font-semibold text-white">
                                                         {daysRemaining <= 0 
-                                                            ? t('institution_admin.subscription_expired') || 'Subscription Expired'
-                                                            : `${daysRemaining} ${t('institution_admin.days_remaining') || 'days remaining'}`
+                                                            ? t('institution_admin.subscription_expired')
+                                                            : `${daysRemaining} ${t('institution_admin.days_remaining')}`
                                                         }
                                                     </p>
                                                     {daysRemaining > 0 && daysRemaining <= 30 && (
                                                         <p className="text-xs text-yellow-300 mt-1">
-                                                            Renew soon to avoid service interruption
+                                                            {t('institution_admin.renew_soon_message')}
                                                         </p>
                                                     )}
                                                 </div>
@@ -983,39 +983,39 @@ const Subscription = ({ institution, stats, onRefresh, onAddUser }) => {
                     {/* No Subscription State */}
                     <div className="bg-white/5 border border-white/10 rounded-xl p-8 backdrop-blur-sm text-center">
                         <CreditCard className="w-16 h-16 mx-auto mb-4 text-gray-400 opacity-50" />
-                        <h3 className="text-xl font-semibold text-white mb-2">{t('institution_admin.no_active_subscription') || 'No Active Subscription'}</h3>
+                        <h3 className="text-xl font-semibold text-white mb-2">{t('institution_admin.no_active_subscription')}</h3>
                         <p className="text-gray-400 mb-6">
-                            {t('institution_admin.no_subscription_message') || 'Your institution does not have an active subscription. Contact support to set up a subscription plan.'}
+                            {t('institution_admin.no_subscription_message')}
                         </p>
                         <div className="bg-white/5 border border-white/10 rounded-lg p-6 mt-6">
-                            <h4 className="text-lg font-semibold text-white mb-4">{t('institution_admin.institution_plan_features') || 'Institution Plan Features'}</h4>
+                            <h4 className="text-lg font-semibold text-white mb-4">{t('institution_admin.institution_plan_features')}</h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
                                 <div className="flex items-start gap-3">
                                     <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: secondaryColor }} />
                                     <div>
-                                        <p className="text-white font-medium">{t('institution_admin.admin_dashboard') || 'Admin Dashboard'}</p>
-                                        <p className="text-gray-400 text-sm">{t('institution_admin.admin_dashboard_desc') || 'Complete management interface'}</p>
+                                        <p className="text-white font-medium">{t('institution_admin.admin_dashboard')}</p>
+                                        <p className="text-gray-400 text-sm">{t('institution_admin.admin_dashboard_desc')}</p>
                                     </div>
                                 </div>
                                 <div className="flex items-start gap-3">
                                     <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: secondaryColor }} />
                                     <div>
                                         <p className="text-white font-medium">{t('institution_admin.custom_branding')}</p>
-                                        <p className="text-gray-400 text-sm">{t('institution_admin.custom_branding_desc') || 'Your logo and colors'}</p>
+                                        <p className="text-gray-400 text-sm">{t('institution_admin.custom_branding_desc')}</p>
                                     </div>
                                 </div>
                                 <div className="flex items-start gap-3">
                                     <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: secondaryColor }} />
                                     <div>
-                                        <p className="text-white font-medium">{t('institution_admin.bulk_user_management') || 'Bulk User Management'}</p>
-                                        <p className="text-gray-400 text-sm">{t('institution_admin.bulk_user_management_desc') || 'Import and manage users easily'}</p>
+                                        <p className="text-white font-medium">{t('institution_admin.bulk_user_management')}</p>
+                                        <p className="text-gray-400 text-sm">{t('institution_admin.bulk_user_management_desc')}</p>
                                     </div>
                                 </div>
                                 <div className="flex items-start gap-3">
                                     <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: secondaryColor }} />
                                     <div>
                                         <p className="text-white font-medium">{t('institution_admin.advanced_analytics')}</p>
-                                        <p className="text-gray-400 text-sm">{t('institution_admin.advanced_analytics_desc') || 'Detailed insights and reports'}</p>
+                                        <p className="text-gray-400 text-sm">{t('institution_admin.advanced_analytics_desc')}</p>
                                     </div>
                                 </div>
                             </div>

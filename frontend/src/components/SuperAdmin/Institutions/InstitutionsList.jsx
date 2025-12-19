@@ -5,6 +5,7 @@ import FilterBar from '../common/FilterBar';
 import InstitutionDetailModal from './InstitutionDetailModal';
 import toast from 'react-hot-toast';
 import { Eye, Download } from 'lucide-react';
+import { getEffectiveStatus } from '../../../utils/subscriptionUtils';
 
 const InstitutionsList = ({ onInstitutionClick }) => {
   const [institutions, setInstitutions] = useState([]);
@@ -100,8 +101,8 @@ const InstitutionsList = ({ onInstitutionClick }) => {
         </span>
       </td>
       <td className="py-3 px-4">
-        <span className={`px-2 py-1 rounded-full text-xs border ${getStatusBadgeColor(institution.subscription?.status)}`}>
-          {institution.subscription?.status || 'active'}
+        <span className={`px-2 py-1 rounded-full text-xs border ${getStatusBadgeColor(getEffectiveStatus(institution.subscription))}`}>
+          {getEffectiveStatus(institution.subscription)}
         </span>
       </td>
       <td className="py-3 px-4 text-gray-400 text-sm">

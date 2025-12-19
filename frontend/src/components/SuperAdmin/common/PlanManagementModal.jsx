@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import api from '../../../config/api';
@@ -8,11 +8,56 @@ const PlanManagementModal = ({ isOpen, onClose, type, entityId, currentPlan, onU
   const [formData, setFormData] = useState({
     plan: currentPlan?.plan || 'free',
     status: currentPlan?.status || 'active',
+    startDate: currentPlan?.startDate 
+      ? new Date(currentPlan.startDate).toISOString().split('T')[0]
+      : '',
     endDate: currentPlan?.endDate 
       ? new Date(currentPlan.endDate).toISOString().split('T')[0]
       : ''
   });
   const [loading, setLoading] = useState(false);
+
+  // Update form data when currentPlan changes or modal opens
+  useEffect(() => {
+    if (isOpen && currentPlan) {
+      setFormData({
+        plan: currentPlan?.plan || 'free',
+        status: currentPlan?.status || 'active',
+        startDate: currentPlan?.startDate 
+          ? new Date(currentPlan.startDate).toISOString().split('T')[0]
+          : '',
+        endDate: currentPlan?.endDate 
+          ? new Date(currentPlan.endDate).toISOString().split('T')[0]
+          : ''
+      });
+    }
+  }, [currentPlan, isOpen]);
+
+  // Automatically update status when endDate changes
+  const handleEndDateChange = (e) => {
+    const newEndDate = e.target.value;
+    const newFormData = { ...formData, endDate: newEndDate };
+    
+    // If endDate is provided, automatically calculate status
+    if (newEndDate) {
+      const now = new Date();
+      const endDateObj = new Date(newEndDate);
+      // Set time to end of day for comparison
+      endDateObj.setHours(23, 59, 59, 999);
+      
+      if (endDateObj < now) {
+        newFormData.status = 'expired';
+      } else {
+        // Only auto-update to active if it was expired or cancelled
+        // This prevents overriding an active status unnecessarily
+        if (formData.status === 'expired' || formData.status === 'cancelled') {
+          newFormData.status = 'active';
+        }
+      }
+    }
+    
+    setFormData(newFormData);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -27,6 +72,10 @@ const PlanManagementModal = ({ isOpen, onClose, type, entityId, currentPlan, onU
         plan: formData.plan,
         status: formData.status
       };
+
+      if (formData.startDate) {
+        payload.startDate = formData.startDate;
+      }
 
       if (formData.endDate) {
         payload.endDate = formData.endDate;
@@ -116,17 +165,30 @@ const PlanManagementModal = ({ isOpen, onClose, type, entityId, currentPlan, onU
                 </div>
 
                 {formData.plan !== 'lifetime' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      End Date (Optional)
-                    </label>
-                    <input
-                      type="date"
-                      value={formData.endDate}
-                      onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                      className="w-full px-4 py-2 bg-black/30 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none"
-                    />
-                  </div>
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Start Date (Optional)
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.startDate}
+                        onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                        className="w-full px-4 py-2 bg-black/30 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        End Date (Optional)
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.endDate}
+                        onChange={handleEndDateChange}
+                        className="w-full px-4 py-2 bg-black/30 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none"
+                      />
+                    </div>
+                  </>
                 )}
 
                 <div className="flex gap-3 pt-4">

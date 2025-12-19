@@ -493,19 +493,52 @@ const getInstitutionById = asyncHandler(async (req, res, next) => {
  */
 const updateInstitutionPlan = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
-  const { status, endDate, maxUsers } = req.body;
+  const { status, startDate, endDate, maxUsers } = req.body;
   
   const institution = await Institution.findById(id);
   if (!institution) {
     throw new AppError('Institution not found', 404, 'NOT_FOUND');
   }
 
-  if (status) {
-    institution.subscription.status = status;
+  // Update startDate if provided
+  if (startDate) {
+    institution.subscription.startDate = new Date(startDate);
   }
+
+  // Update endDate first if provided
   if (endDate) {
     institution.subscription.endDate = new Date(endDate);
+    
+    // Automatically recalculate status based on endDate
+    // This ensures status updates correctly when endDate changes
+    // Only recalculate if status is not explicitly set to 'cancelled' (cancelled should persist)
+    const now = new Date();
+    const newEndDate = new Date(endDate);
+    // Set time to end of day for comparison
+    newEndDate.setHours(23, 59, 59, 999);
+    
+    if (newEndDate < now) {
+      // End date is in the past - set to expired (unless explicitly cancelled)
+      if (status !== 'cancelled') {
+        institution.subscription.status = 'expired';
+      }
+    } else {
+      // End date is in the future - set to active (unless explicitly cancelled)
+      if (status !== 'cancelled') {
+        institution.subscription.status = 'active';
+      }
+    }
   }
+
+  // Update status if explicitly provided (allows manual override, but endDate recalculation takes precedence)
+  if (status && !endDate) {
+    // Only update status if endDate wasn't provided (to avoid overriding endDate-based calculation)
+    institution.subscription.status = status;
+  } else if (status === 'cancelled') {
+    // Always allow setting to cancelled, even if endDate is provided
+    institution.subscription.status = 'cancelled';
+  }
+
   if (maxUsers) {
     institution.subscription.maxUsers = parseInt(maxUsers);
   }

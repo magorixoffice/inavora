@@ -4,7 +4,7 @@ import { X, Mail, Calendar, Users, CreditCard, Building2, Edit2 } from 'lucide-r
 import api from '../../../config/api';
 import toast from 'react-hot-toast';
 import PlanManagementModal from '../common/PlanManagementModal';
-import { getEffectivePlan } from '../../../utils/subscriptionUtils';
+import { getEffectivePlan, getEffectiveStatus } from '../../../utils/subscriptionUtils';
 
 const InstitutionDetailModal = ({ institution, isOpen, onClose, onUpdate }) => {
   const [institutionDetails, setInstitutionDetails] = useState(null);
@@ -122,8 +122,8 @@ const InstitutionDetailModal = ({ institution, isOpen, onClose, onUpdate }) => {
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <p className="text-sm text-gray-400 mb-1">Status</p>
-                            <span className={`px-3 py-1 rounded-full text-sm border ${getStatusBadgeColor(instData.subscription?.status)}`}>
-                              {instData.subscription?.status || 'active'}
+                            <span className={`px-3 py-1 rounded-full text-sm border ${getStatusBadgeColor(getEffectiveStatus(instData.subscription))}`}>
+                              {getEffectiveStatus(instData.subscription)}
                             </span>
                           </div>
                           <div>
