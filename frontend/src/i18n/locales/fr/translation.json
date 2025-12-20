@@ -719,6 +719,10 @@
     "join_link_description": "Partagez ce lien directement avec les participants",
     "welcome": "Bienvenue",
     "live": "En direct",
+    "kick_participant_title": "Retirer le participant ?",
+    "kick_participant_description": "Êtes-vous sûr de vouloir retirer {{participant}} de la présentation ?",
+    "kick": "Retirer",
+    "remove_participant_tooltip": "Retirer le participant",
     "leaderboard_footer": "Les scores sont calculés en fonction de l'exactitude et du temps de réponse. Continuez à participer pour améliorer votre classement !",
     "loading_leaderboard": "Chargement du classement..."
   },
@@ -1433,7 +1437,7 @@
       "presentation_live": "Presentation is now live!",
       "new_participant_joined": "New participant joined!",
       "responses_cleared": "Responses cleared",
-      "participant_kicked": "Kicked {{participant}}",
+      "participant_kicked": "{{participant}} retiré",
       "presentation_ended": "Presentation ended"
     },
     "join_presentation": {

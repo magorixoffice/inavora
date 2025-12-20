@@ -689,9 +689,10 @@
     "new_slide_cancel": "रद्द करें",
     "end_presentation_description": "प्रतिभागी डिस्कनेक्ट हो जाएंगे और आगे की प्रतिक्रियाएँ जमा नहीं कर पाएंगे।",
     "end_presentation": "प्रस्तुति समाप्त करें",
-    "kick_participant_title": "प्रतिभागी को निकालें?",
-    "kick_participant_description": "क्या आप वाकई {{participant}} को प्रस्तुति से निकालना चाहते हैं?",
-    "kick": "निकालें",
+    "kick_participant_title": "प्रतिभागी को हटाएं?",
+    "kick_participant_description": "क्या आप वाकई {{participant}} को प्रस्तुति से हटाना चाहते हैं?",
+    "kick": "हटाएं",
+    "remove_participant_tooltip": "प्रतिभागी हटाएं",
     "leaderboard_footer": "स्कोर सटीकता और प्रतिक्रिया समय के आधार पर गणना की जाती है। अपनी रैंकिंग सुधारने के लिए भाग लेते रहें!",
     "loading_leaderboard": "लीडरबोर्ड लोड हो रहा है..."
   },

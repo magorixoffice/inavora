@@ -723,9 +723,10 @@
     "end_presentation_title": "结束演示？",
     "end_presentation_description": "参与者将被断开连接，无法提交进一步的回复。",
     "end_presentation": "结束演示",
-    "kick_participant_title": "踢出参与者？",
-    "kick_participant_description": "您确定要将{{participant}}踢出演示吗？",
-    "kick": "踢出",
+    "kick_participant_title": "移除参与者？",
+    "kick_participant_description": "您确定要将{{participant}}从演示中移除吗？",
+    "kick": "移除",
+    "remove_participant_tooltip": "移除参与者",
     "leaderboard_footer": "分数根据正确性和响应时间计算。继续参与以提升您的排名！",
     "loading_leaderboard": "正在加载排行榜..."
   },
@@ -1941,7 +1942,7 @@
       "presentation_live": "Presentation is now live!",
       "new_participant_joined": "New participant joined!",
       "responses_cleared": "Responses cleared",
-      "participant_kicked": "Kicked {{participant}}",
+      "participant_kicked": "已移除 {{participant}}",
       "presentation_ended": "Presentation ended"
     },
     "join_presentation": {

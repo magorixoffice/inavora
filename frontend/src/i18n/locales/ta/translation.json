@@ -161,9 +161,10 @@
     "end_presentation_title": "வழங்கலை முடிக்கவா?",
     "end_presentation_description": "பங்கேற்பாளர்கள் துண்டிக்கப்படுவார்கள் மேலும் மேலும் பதில்களை சமர்ப்பிக்க முடியாது.",
     "end_presentation": "வழங்கலை முடிக்கவும்",
-    "kick_participant_title": "பங்கேற்பாளரை வெளியேற்றவா?",
-    "kick_participant_description": "இந்த வழங்கலிலிருந்து {{participant}}ஐ வெளியேற்ற விரும்புகிறீர்களா?",
-    "kick": "வெளியேற்றவும்",
+    "kick_participant_title": "பங்கேற்பாளரை நீக்கவா?",
+    "kick_participant_description": "இந்த வழங்கலிலிருந்து {{participant}}ஐ நீக்க விரும்புகிறீர்களா?",
+    "kick": "நீக்கவும்",
+    "remove_participant_tooltip": "பங்கேற்பாளரை நீக்கவும்",
     "leaderboard_footer": "மதிப்பெண்கள் துல்லியம் மற்றும் பதில் நேரத்தின் அடிப்படையில் கணக்கிடப்படுகின்றன. உங்கள் தரவரிசையை மேம்படுத்த கலந்துகொள்ளத் தொடருங்கள்!",
     "loading_leaderboard": "லீடர்போர்டு ஏற்றப்படுகிறது..."
   },
@@ -1437,7 +1438,7 @@
       "presentation_live": "Presentation is now live!",
       "new_participant_joined": "New participant joined!",
       "responses_cleared": "Responses cleared",
-      "participant_kicked": "Kicked {{participant}}",
+      "participant_kicked": "{{participant}} நீக்கப்பட்டது",
       "presentation_ended": "Presentation ended"
     },
     "join_presentation": {

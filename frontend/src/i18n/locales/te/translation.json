@@ -135,6 +135,10 @@
     "or": "లేదా",
     "join_link": "లింక్‌లో చేరండి",
     "join_link_description": "ఈ లింక్‌ను నేరుగా పాల్గొనేవారితో పంచుకోండి",
+    "kick_participant_title": "పాల్గొనేవారిని తీసివేయాలా?",
+    "kick_participant_description": "మీరు నిజంగా {{participant}} ని ప్రదర్శన నుండి తీసివేయాలనుకుంటున్నారా?",
+    "kick": "తీసివేయి",
+    "remove_participant_tooltip": "పాల్గొనేవారిని తీసివేయి",
     "leaderboard_footer": "మెచ్చుకోలు ఖచ్చితత్వం మరియు ప్రతిస్పందన సమయం ఆధారంగా లెక్కించబడతాయి. మీ ర్యాంకింగ్‌ను మెరుగుపరచడానికి పాల్గొనడం కొనసాగించండి!",
     "loading_leaderboard": "లీడర్‌బోర్డ్ లోడ్ అవుతోంది..."
   },
@@ -1372,7 +1376,7 @@
       "presentation_live": "Presentation is now live!",
       "new_participant_joined": "New participant joined!",
       "responses_cleared": "Responses cleared",
-      "participant_kicked": "Kicked {{participant}}",
+      "participant_kicked": "{{participant}} తీసివేయబడింది",
       "presentation_ended": "Presentation ended"
     },
     "join_presentation": {

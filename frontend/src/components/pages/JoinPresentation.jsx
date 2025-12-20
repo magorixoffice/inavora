@@ -143,29 +143,29 @@ const JoinPresentation = () => {
   }, []);
 
   // Auto-populate name and auto-join if conditions are met
+  // Only auto-join for logged-in users, not when manually typing
   useEffect(() => {
     // Don't auto-join if presentation has ended
     if (presentationEnded) {
       return;
     }
     
-    // Check if we should auto-join
-    // Auto-join if: socket connected, not already joined, not currently joining, and has a name
-    const hasName = participantName.trim() || currentUser?.displayName;
+    // Only auto-join if user is logged in with a displayName
+    // This prevents auto-join when user is manually typing in the input field
     const shouldAutoJoin = 
+      currentUser?.displayName && // Only for logged-in users
       socket && 
       socketConnected && 
       !hasJoined && 
-      !isAutoJoining && 
-      hasName;
+      !isAutoJoining;
     
     if (shouldAutoJoin) {
       setIsAutoJoining(true);
       setJoinError(null); // Reset any previous errors
       
-      // Use stored name or current user's name
-      const nameToUse = participantName.trim() || currentUser?.displayName || '';
-      if (nameToUse && nameToUse !== participantName) {
+      // Use current user's display name
+      const nameToUse = currentUser.displayName;
+      if (nameToUse !== participantName) {
         setParticipantName(nameToUse);
       }
       
@@ -186,7 +186,7 @@ const JoinPresentation = () => {
 
       return () => clearTimeout(timeoutTimer);
     }
-  }, [currentUser, socket, socketConnected, code, participantId, hasJoined, isAutoJoining, participantName, presentationEnded]);
+  }, [currentUser, socket, socketConnected, code, participantId, hasJoined, isAutoJoining, presentationEnded]);
 
   const handleJoin = () => {
     // Don't allow joining if presentation has ended

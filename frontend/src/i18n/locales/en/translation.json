@@ -741,9 +741,10 @@
     "end_presentation_title": "End presentation?",
     "end_presentation_description": "Participants will be disconnected and won't be able to submit further responses.",
     "end_presentation": "End Presentation",
-    "kick_participant_title": "Kick Participant?",
-    "kick_participant_description": "Are you sure you want to kick {{participant}} from the presentation?",
-    "kick": "Kick",
+    "kick_participant_title": "Remove Participant?",
+    "kick_participant_description": "Are you sure you want to remove {{participant}} from the presentation?",
+    "kick": "Remove",
+    "remove_participant_tooltip": "Remove participant",
     "leaderboard_footer": "Scores are calculated based on correctness and response time. Keep participating to improve your ranking!",
     "loading_leaderboard": "Loading leaderboard..."
   },
@@ -2095,7 +2096,7 @@
       "presentation_live": "Presentation is now live!",
       "new_participant_joined": "New participant joined!",
       "responses_cleared": "Responses cleared",
-      "participant_kicked": "Kicked {{participant}}",
+      "participant_kicked": "Removed {{participant}}",
       "presentation_ended": "Presentation ended"
     },
     "join_presentation": {

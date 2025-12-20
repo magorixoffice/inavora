@@ -719,6 +719,10 @@
     "join_link": "दुवा सामील व्हा",
     "join_link_description": "हा दुवा सहभागींशी थेट सामायिक करा",
     "welcome": "स्वागत आहे",
+    "kick_participant_title": "सहभागी काढून टाकायचा?",
+    "kick_participant_description": "तुम्हाला खरोखरच {{participant}} ला प्रस्तुतीतून काढून टाकायचे आहे का?",
+    "kick": "काढून टाका",
+    "remove_participant_tooltip": "सहभागी काढून टाका",
     "leaderboard_footer": "स्कोअर अचूकते आणि प्रतिसाद वेळेवर आधारित गणना केली जाते. आपली रँकिंग सुधारण्यासाठी सहभागी होत रहा!",
     "loading_leaderboard": "लीडरबोर्ड लोड होत आहे...",
     "live": "थेट"
@@ -1914,7 +1918,7 @@
       "presentation_live": "Presentation is now live!",
       "new_participant_joined": "New participant joined!",
       "responses_cleared": "Responses cleared",
-      "participant_kicked": "Kicked {{participant}}",
+      "participant_kicked": "{{participant}} काढून टाकले",
       "presentation_ended": "Presentation ended"
     },
     "join_presentation": {

@@ -1121,7 +1121,7 @@ const PresentMode = () => {
                         <button
                           onClick={() => handleKickParticipant(participant)}
                           className="p-2 text-red-400 hover:text-red-300 rounded-full transition-colors opacity-0 group-hover:opacity-100"
-                          title="Kick participant"
+                          title={t('presentation.remove_participant_tooltip')}
                         >
                           <Ban className="w-4 h-4" />
                         </button>

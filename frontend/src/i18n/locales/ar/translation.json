@@ -161,9 +161,10 @@
     "end_presentation_title": "إنهاء العرض التقديمي؟",
     "end_presentation_description": "سيتم قطع اتصال المشاركين ولن يتمكنوا من إرسال ردود إضافية.",
     "end_presentation": "إنهاء العرض التقديمي",
-    "kick_participant_title": "طرد المشارك؟",
-    "kick_participant_description": "هل أنت متأكد من طرد {{participant}} من العرض التقديمي؟",
-    "kick": "طرد",
+    "kick_participant_title": "إزالة المشارك؟",
+    "kick_participant_description": "هل أنت متأكد من إزالة {{participant}} من العرض التقديمي؟",
+    "kick": "إزالة",
+    "remove_participant_tooltip": "إزالة المشارك",
     "leaderboard_footer": "يتم حساب النقاط بناءً على الدقة ووقت الاستجابة. استمر في المشاركة لتحسين ترتيبك!",
     "loading_leaderboard": "جاري تحميل لوحة المتصدرين..."
   },
@@ -1433,7 +1434,7 @@
       "presentation_live": "Presentation is now live!",
       "new_participant_joined": "New participant joined!",
       "responses_cleared": "Responses cleared",
-      "participant_kicked": "Kicked {{participant}}",
+      "participant_kicked": "تمت إزالة {{participant}}",
       "presentation_ended": "Presentation ended"
     },
     "join_presentation": {

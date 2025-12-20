@@ -712,9 +712,10 @@
     "end_presentation_title": "Encerrar apresentação?",
     "end_presentation_description": "Os participantes serão desconectados e não poderão enviar mais respostas.",
     "end_presentation": "Encerrar Apresentação",
-    "kick_participant_title": "Expulsar Participante?",
-    "kick_participant_description": "Tem certeza de que deseja expulsar {{participant}} da apresentação?",
-    "kick": "Expulsar",
+    "kick_participant_title": "Remover Participante?",
+    "kick_participant_description": "Tem certeza de que deseja remover {{participant}} da apresentação?",
+    "kick": "Remover",
+    "remove_participant_tooltip": "Remover participante",
     "leaderboard_footer": "As pontuações são calculadas com base na precisão e no tempo de resposta. Continue participando para melhorar sua classificação!",
     "loading_leaderboard": "Carregando classificação..."
   },
@@ -1929,7 +1930,7 @@
       "presentation_live": "Presentation is now live!",
       "new_participant_joined": "New participant joined!",
       "responses_cleared": "Responses cleared",
-      "participant_kicked": "Kicked {{participant}}",
+      "participant_kicked": "{{participant}} removido",
       "presentation_ended": "Presentation ended"
     },
     "join_presentation": {

@@ -710,6 +710,10 @@
     "or": "অথবা",
     "join_link": "যোগদানের লিঙ্ক",
     "join_link_description": "এই লিঙ্কটি সরাসরি অংশগ্রহণকারীদের সাথে শেয়ার করুন",
+    "kick_participant_title": "অংশগ্রহণকারী সরান?",
+    "kick_participant_description": "আপনি কি নিশ্চিত যে আপনি {{participant}} কে উপস্থাপনা থেকে সরাতে চান?",
+    "kick": "সরান",
+    "remove_participant_tooltip": "অংশগ্রহণকারী সরান",
     "leaderboard_footer": "স্কোর নির্ভুলতা এবং প্রতিক্রিয়া সময়ের উপর ভিত্তি করে গণনা করা হয়। আপনার র্যাঙ্কিং উন্নত করতে অংশগ্রহণ চালিয়ে যান!",
     "loading_leaderboard": "লিডারবোর্ড লোড হচ্ছে..."
   },
@@ -1904,7 +1908,7 @@
       "presentation_live": "Presentation is now live!",
       "new_participant_joined": "New participant joined!",
       "responses_cleared": "Responses cleared",
-      "participant_kicked": "Kicked {{participant}}",
+      "participant_kicked": "{{participant}} সরানো হয়েছে",
       "presentation_ended": "Presentation ended"
     },
     "join_presentation": {
