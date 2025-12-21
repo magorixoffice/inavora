@@ -1,4 +1,4 @@
-import { BarChart3, Cloud, MessageSquare, Sliders, HelpCircle, Grid2X2, MapPin, ChartBarDecreasing, MessagesSquare, SquareStack, Brain, Type, Image, Video, BookOpen, FileText, Monitor, Palette } from 'lucide-react';
+import { BarChart3, Cloud, MessageSquare, Sliders, HelpCircle, Grid2X2, MapPin, ChartBarDecreasing, MessagesSquare, SquareStack, Brain, Type, Image, Video, BookOpen, FileText, Monitor, Palette, File } from 'lucide-react';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
@@ -12,7 +12,7 @@ const NewSlideDropdown = ({ onSelectType, onClose, isHorizontal = false, user })
   const isFreePlan = !user || effectivePlan === 'free';
   
   // Define restricted slide types for free users
-  const restrictedSlideTypes = ['miro', 'powerpoint', 'google_slides'];
+  const restrictedSlideTypes = ['miro', 'powerpoint', 'google_slides', 'pdf'];
   
   // Function to handle slide type selection
   const handleSelectType = (type) => {
@@ -79,6 +79,12 @@ const NewSlideDropdown = ({ onSelectType, onClose, isHorizontal = false, user })
           label: t('new_slide_dropdown.import_from_google_slides', { googleSlidesBrand: t('new_slide_dropdown.google_slides_brand') }),
           icon: Monitor, 
           color: 'text-blue-500'
+        },
+        { 
+          type: 'pdf', 
+          label: t('new_slide_dropdown.import_pdf'),
+          icon: File, 
+          color: 'text-red-500'
         },
       ]
     },

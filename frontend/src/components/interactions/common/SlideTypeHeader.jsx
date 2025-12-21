@@ -1,4 +1,4 @@
-import { BarChart3, Cloud, MessageSquare, Sliders, ChartBarDecreasing, MessagesSquare, CircleQuestionMark, SquareStack, Grid2X2, MapPin, Brain, Trophy, FileText, Monitor, Presentation, Type, Image, Video, BookOpen } from 'lucide-react';
+import { BarChart3, Cloud, MessageSquare, Sliders, ChartBarDecreasing, MessagesSquare, CircleQuestionMark, SquareStack, Grid2X2, MapPin, Brain, Trophy, FileText, Monitor, Presentation, Type, Image, Video, BookOpen, File } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 const slideTypeConfig = {
@@ -25,7 +25,8 @@ const slideTypeConfig = {
   // Bring Your Slides In section
   miro: { labelKey: 'slide_types.miro', icon: FileText, color: 'text-[#009688]' },
   powerpoint: { labelKey: 'slide_types.powerpoint', icon: Presentation, color: 'text-[#D84315]' },
-  google_slides: { labelKey: 'slide_types.google_slides', icon: Monitor, color: 'text-[#4285F4]' }
+  google_slides: { labelKey: 'slide_types.google_slides', icon: Monitor, color: 'text-[#4285F4]' },
+  pdf: { labelKey: 'slide_types.pdf', icon: File, color: 'text-[#F44336]' }
 };
 
 const SlideTypeHeader = ({ type }) => {

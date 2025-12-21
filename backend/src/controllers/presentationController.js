@@ -274,6 +274,9 @@ const getPresentationById = asyncHandler(async (req, res, next) => {
         powerpointUrl: slide.powerpointUrl,
         powerpointPublicId: slide.powerpointPublicId,
         googleSlidesUrl: slide.googleSlidesUrl,
+        pdfUrl: slide.pdfUrl,
+        pdfPublicId: slide.pdfPublicId,
+        pdfPages: slide.pdfPages,
         createdAt: slide.createdAt,
         updatedAt: slide.updatedAt
       }))

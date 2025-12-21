@@ -1,4 +1,5 @@
 const cloudinaryService = require('../services/cloudinaryService');
+const pdfConversionService = require('../services/pdfConversionService');
 const Image = require('../models/Image');
 const { AppError, asyncHandler } = require('../middleware/errorHandler');
 const Logger = require('../utils/logger');
@@ -311,11 +312,103 @@ const uploadPowerPoint = asyncHandler(async (req, res, next) => {
   }
 });
 
+/**
+ * Upload PDF file to Cloudinary and convert pages to images
+ * @route POST /api/upload/pdf
+ * @access Private
+ * @param {string} req.body.pdf - Base64 encoded PDF file
+ * @returns {Object} Uploaded PDF URL, public ID, and page images
+ */
+const uploadPdf = asyncHandler(async (req, res, next) => {
+  const { pdf } = req.body;
+  const userId = req.userId;
+
+  if (!pdf) {
+    throw new AppError('PDF file data is required', 400, 'VALIDATION_ERROR');
+  }
+
+  // Check if it's a valid PDF file (base64 encoded)
+  const isValidPdfMime = pdf.startsWith('data:application/pdf') || 
+                          pdf.startsWith('data:application/octet-stream');
+  
+  if (!isValidPdfMime && !pdf.startsWith('data:')) {
+    throw new AppError('Invalid PDF format. Must be a .pdf file.', 400, 'VALIDATION_ERROR');
+  }
+
+  const sizeInBytes = (pdf.length * 3) / 4;
+  const sizeInMB = sizeInBytes / (1024 * 1024);
+  
+  // Allow up to 100MB for PDF files
+  if (sizeInMB > 100) {
+    throw new AppError(`PDF file too large (${sizeInMB.toFixed(1)}MB). Maximum size is 100MB.`, 400, 'VALIDATION_ERROR');
+  }
+
+  Logger.info(`Attempting to upload PDF for user ${userId}, size: ${sizeInMB.toFixed(2)}MB`);
+
+  try {
+    // Upload PDF to Cloudinary
+    const result = await cloudinaryService.uploadPdf(pdf);
+
+    // Store PDF reference in Image model
+    try {
+      const pdfRecord = new Image({
+        userId,
+        imageUrl: result.url, // Reusing imageUrl field for PDF URL
+        publicId: result.publicId
+      });
+      await pdfRecord.save();
+      Logger.info(`PDF record saved to database for user ${userId}, publicId: ${result.publicId}`);
+    } catch (dbError) {
+      Logger.error('Error saving PDF record to database', {
+        userId,
+        publicId: result.publicId,
+        error: dbError.message
+      });
+    }
+
+    Logger.info(`PDF uploaded successfully for user ${userId}, publicId: ${result.publicId}`);
+
+    // Convert PDF pages to images using Cloudinary
+    let pdfPages = [];
+    try {
+      Logger.info(`Starting PDF page conversion for user ${userId}`);
+      pdfPages = await pdfConversionService.convertPdfPagesToImages(result.url, pdf, result.publicId);
+      Logger.info(`PDF conversion completed: ${pdfPages.length} pages converted`);
+    } catch (conversionError) {
+      Logger.error('Error converting PDF pages', {
+        userId,
+        publicId: result.publicId,
+        error: conversionError.message
+      });
+      // Still return success with PDF URL, but without page images
+      // Frontend can handle this case
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'PDF file uploaded successfully',
+      data: {
+        pdfUrl: result.url,
+        publicId: result.publicId,
+        pdfPages: pdfPages
+      }
+    });
+  } catch (error) {
+    Logger.error('Error in uploadPdf controller', {
+      userId,
+      error: error.message
+    });
+    
+    throw new AppError(error.message || 'Failed to upload PDF file', 500, 'UPLOAD_ERROR');
+  }
+});
+
 module.exports = {
   uploadImage,
   deleteImage,
   getUserImages,
   uploadVideo,
   deleteVideo,
-  uploadPowerPoint
+  uploadPowerPoint,
+  uploadPdf
 };

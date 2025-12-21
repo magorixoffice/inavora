@@ -147,6 +147,7 @@
     "miro": "Miro Board",
     "powerpoint": "PowerPoint",
     "google_slides": "Google Slides",
+    "pdf": "PDF",
     "upload": "Upload File",
     "edit_settings": "Edit slide settings below"
   },
@@ -453,6 +454,34 @@
       "participant_view": "Participants can view the presentation",
       "live_presentation": "Live Presentation",
       "redirect_message": "Participants will be redirected to view the PowerPoint presentation"
+    },
+    "pdf": {
+      "title_label": "Title",
+      "title_placeholder": "Slide title...",
+      "pdf_label": "PDF",
+      "pdf_slide": "PDF Slide",
+      "upload_file_button": "Upload PDF",
+      "file_requirements": "Supported formats: .pdf (Max 100MB)",
+      "file_uploaded": "PDF File Uploaded",
+      "uploaded_successfully": "Uploaded successfully",
+      "remove_file_title": "Remove PDF file",
+      "invalid_file_type": "Please upload a .pdf file",
+      "file_too_large": "PDF file too large. Maximum size is 100MB",
+      "uploading": "Uploading...",
+      "upload_success": "PDF uploaded successfully",
+      "upload_success_with_pages": "PDF uploaded successfully. {{count}} pages converted",
+      "upload_error": "Failed to upload PDF file",
+      "failed_read_file": "Failed to read PDF file",
+      "pages_converted": "{{count}} pages converted",
+      "preview_pages": "PDF Pages",
+      "page": "Page",
+      "previous": "Previous",
+      "next": "Next",
+      "no_pages": "No PDF pages available",
+      "upload_pdf_first": "Please upload a PDF file first",
+      "image_load_error": "Failed to load PDF page image",
+      "no_image": "No image available for this page",
+      "save_reminder": "Don't forget to save the slide to persist the PDF pages"
     },
     "instruction": {
       "non_editable_title": "Non-Editable Slide",
@@ -2048,6 +2077,7 @@
     "import_from_miro": "Import from {{miroBrand}}",
     "import_powerpoint": "Import {{powerpointBrand}}",
     "import_from_google_slides": "Import from {{googleSlidesBrand}}",
+    "import_pdf": "Import PDF",
     "upload_presentation": "Upload Presentation"
   },
   "toasts": {

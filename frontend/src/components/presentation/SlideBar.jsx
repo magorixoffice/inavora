@@ -414,6 +414,32 @@ const SlideBar = ({ slides, currentSlideIndex, onSlideSelect, onDeleteSlide, onN
           </div>
         );
 
+      case 'pdf':
+        const pdfPages = slide?.pdfPages || [];
+        return (
+          <div className="w-full h-full p-1.5 flex flex-col gap-1 bg-gradient-to-br from-[#1F1F1F] to-[#181818]">
+            <div className="text-[6px] sm:text-[7px] font-semibold text-[#E0E0E0] text-center leading-tight line-clamp-1">
+              {truncatedQuestion || t('slide_editors.pdf.pdf_slide')}
+            </div>
+            <div className="flex-1 flex items-center justify-center bg-[#232323] rounded-sm border border-[#2F2F2F] overflow-hidden relative">
+              {pdfPages.length > 0 && pdfPages[0]?.imageUrl ? (
+                <img 
+                  src={pdfPages[0].imageUrl} 
+                  alt="PDF preview" 
+                  className="w-full h-full object-contain opacity-80"
+                />
+              ) : (
+                <FileText className="h-3 w-3 text-[#F44336]" />
+              )}
+              {pdfPages.length > 1 && (
+                <div className="absolute bottom-0 right-0 bg-black/70 text-[5px] text-white px-1 py-0.5 rounded-tl">
+                  +{pdfPages.length - 1}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+
       default:
         return (
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#1F1F1F] to-[#181818]">
@@ -966,8 +992,8 @@ const SlideBar = ({ slides, currentSlideIndex, onSlideSelect, onDeleteSlide, onN
           {/* Slides List - Horizontal Scroll */}
           <div className="flex items-center gap-3 flex-1 min-w-0">
             {slides.map((slide, index) => (
+              <div key={slide.id} className="flex flex-col items-center gap-1">
               <div
-                key={slide.id}
                 ref={(element) => {
                   itemRefs.current[index] = element;
                 }}
@@ -1051,6 +1077,7 @@ const SlideBar = ({ slides, currentSlideIndex, onSlideSelect, onDeleteSlide, onN
                   </button>
                 )}
 
+              </div>
               </div>
             ))}
           </div>

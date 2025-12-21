@@ -191,11 +191,74 @@ async function deleteVideo(publicId) {
   }
 }
 
+/**
+ * Upload PDF file to Cloudinary
+ * @param {string} base64Pdf - Base64 encoded PDF file
+ * @param {string} folder - Cloudinary folder path
+ * @returns {Object} Upload result with URL and public ID
+ */
+async function uploadPdf(base64Pdf, folder = 'inavora/pdf') {
+  try {
+    const result = await cloudinary.uploader.upload(base64Pdf, {
+      folder: folder,
+      resource_type: 'raw', // PDF files are raw resources
+      use_filename: true,
+      unique_filename: true,
+      overwrite: false
+    });
+
+    return {
+      url: result.secure_url,
+      publicId: result.public_id
+    };
+  } catch (error) {
+    Logger.error('Cloudinary PDF upload error', error);
+    if (error.http_code) {
+      Logger.error(`Cloudinary error details: http_code=${error.http_code}, message=${error.message}`);
+    }
+    throw new Error(error.message || 'Failed to upload PDF to Cloudinary');
+  }
+}
+
+/**
+ * Upload image to Cloudinary (for PDF page conversion)
+ * @param {Buffer} imageBuffer - Image buffer
+ * @param {string} folder - Cloudinary folder path
+ * @returns {Object} Upload result with URL and public ID
+ */
+async function uploadPdfPageImage(imageBuffer, folder = 'inavora/pdf-pages') {
+  try {
+    // Convert buffer to base64
+    const base64Image = `data:image/png;base64,${imageBuffer.toString('base64')}`;
+    
+    const result = await cloudinary.uploader.upload(base64Image, {
+      folder: folder,
+      resource_type: 'image',
+      format: 'png',
+      transformation: [
+        { width: 1920, height: 1080, crop: 'limit' }, // Limit max dimensions for slides
+        { quality: 'auto:good' },
+        { fetch_format: 'auto' }
+      ]
+    });
+
+    return {
+      url: result.secure_url,
+      publicId: result.public_id
+    };
+  } catch (error) {
+    Logger.error('Cloudinary PDF page image upload error', error);
+    throw new Error(error.message || 'Failed to upload PDF page image to Cloudinary');
+  }
+}
+
 module.exports = {
   uploadImage,
   deleteImage,
   uploadPowerPoint,
   uploadDocument,
   uploadVideo,
-  deleteVideo
+  deleteVideo,
+  uploadPdf,
+  uploadPdfPageImage
 };

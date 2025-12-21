@@ -19,7 +19,7 @@ const slideSchema = new mongoose.Schema({
   type: {
     type: String,
     required: true,
-    enum: ['multiple_choice', 'word_cloud', 'open_ended', 'scales', 'ranking', 'qna', 'guess_number', 'hundred_points', '2x2_grid', 'pin_on_image', 'quiz', 'leaderboard', 'text', 'image', 'video', 'instruction', 'pick_answer', 'type_answer', 'miro', 'powerpoint', 'google_slides'],
+    enum: ['multiple_choice', 'word_cloud', 'open_ended', 'scales', 'ranking', 'qna', 'guess_number', 'hundred_points', '2x2_grid', 'pin_on_image', 'quiz', 'leaderboard', 'text', 'image', 'video', 'instruction', 'pick_answer', 'type_answer', 'miro', 'powerpoint', 'google_slides', 'pdf'],
     index: true
   },
   question: {
@@ -300,6 +300,32 @@ const slideSchema = new mongoose.Schema({
   googleSlidesUrl: {
     type: String,
     default: ''
+  },
+  // For pdf slide type
+  pdfUrl: {
+    type: String,
+    default: ''
+  },
+  pdfPublicId: {
+    type: String,
+    default: null
+  },
+  pdfPages: {
+    type: [new mongoose.Schema({
+      pageNumber: {
+        type: Number,
+        required: true
+      },
+      imageUrl: {
+        type: String,
+        required: true
+      },
+      imagePublicId: {
+        type: String,
+        default: null
+      }
+    }, { _id: false })],
+    default: []
   },
 }, {
   timestamps: true

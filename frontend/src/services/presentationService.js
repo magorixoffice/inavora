@@ -226,6 +226,36 @@ export const uploadPowerPoint = async (base64PowerPoint, retries = 3) => {
   }
 };
 
+// Upload PDF file to Cloudinary
+export const uploadPdf = async (base64Pdf, retries = 3) => {
+  const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+  
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      // Set a longer timeout for PDF uploads (5 minutes for large files)
+      const response = await api.post('/upload/pdf', { pdf: base64Pdf }, {
+        timeout: 300000 // 5 minutes timeout for large PDF uploads
+      });
+      return response.data;
+    } catch (error) {
+      // If it's a 429 error and we have retries left, wait and retry
+      if (error.response?.status === 429 && attempt < retries - 1) {
+        const retryAfter = error.response?.data?.retryAfter 
+          ? parseInt(error.response.data.retryAfter) * 1000 
+          : Math.pow(2, attempt) * 1000; // Exponential backoff: 2s, 4s, 8s
+        
+        console.warn(`Upload rate limited. Retrying after ${retryAfter / 1000}s... (attempt ${attempt + 1}/${retries})`);
+        await delay(retryAfter);
+        continue;
+      }
+      
+      // For other errors or final attempt, throw the error
+      console.error('Upload PDF error:', error);
+      throw error;
+    }
+  }
+};
+
 // Upload video to Cloudinary with retry logic for rate limiting
 export const uploadVideo = async (base64Video, retries = 3) => {
   const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));

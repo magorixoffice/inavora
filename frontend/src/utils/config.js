@@ -20,7 +20,7 @@ export const getApiUrl = () => {
   }
 
   // In development, use localhost
-  return 'http://localhost:4001';
+  return 'http://localhost:4000';
 };
 
 /**
@@ -44,7 +44,7 @@ export const getSocketUrl = () => {
     return 'https://inavora-krvm.onrender.com';
   }
 
-  // In development, use localhost (default port 4001 for socket.io)
-  return 'http://localhost:4001';
+  // In development, use localhost (default port 4000 for socket.io)
+  return 'http://localhost:4000';
 };
 

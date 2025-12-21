@@ -121,6 +121,9 @@ module.exports.createSlide = asyncHandler(async (req, res, next) => {
       powerpointUrl,
       powerpointPublicId,
       googleSlidesUrl,
+      pdfUrl,
+      pdfPublicId,
+      pdfPages,
       order  // Accept order from frontend
     } = req.body;
 
@@ -213,6 +216,9 @@ module.exports.createSlide = asyncHandler(async (req, res, next) => {
       powerpointUrl: type === 'powerpoint' ? (powerpointUrl || '') : undefined,
       powerpointPublicId: type === 'powerpoint' ? powerpointPublicId : undefined,
       googleSlidesUrl: type === 'google_slides' ? (googleSlidesUrl || '') : undefined,
+      pdfUrl: type === 'pdf' ? (pdfUrl || '') : undefined,
+      pdfPublicId: type === 'pdf' ? pdfPublicId : undefined,
+      pdfPages: type === 'pdf' ? (pdfPages || []) : undefined,
   });
 
   await slide.save();
@@ -276,6 +282,9 @@ module.exports.createSlide = asyncHandler(async (req, res, next) => {
         powerpointUrl: slide.powerpointUrl,
         powerpointPublicId: slide.powerpointPublicId,
         googleSlidesUrl: slide.googleSlidesUrl,
+        pdfUrl: slide.pdfUrl,
+        pdfPublicId: slide.pdfPublicId,
+        pdfPages: slide.pdfPages,
         createdAt: slide.createdAt,
         updatedAt: slide.updatedAt
       }
@@ -326,6 +335,9 @@ module.exports.updateSlide = asyncHandler(async (req, res, next) => {
       powerpointUrl,
       powerpointPublicId,
       googleSlidesUrl,
+      pdfUrl,
+      pdfPublicId,
+      pdfPages,
       order  // Add order field
     } = req.body;
 
@@ -468,6 +480,15 @@ module.exports.updateSlide = asyncHandler(async (req, res, next) => {
     if (googleSlidesUrl !== undefined && slide.type === 'google_slides') {
       slide.googleSlidesUrl = googleSlidesUrl;
     }
+    if (pdfUrl !== undefined && slide.type === 'pdf') {
+      slide.pdfUrl = pdfUrl;
+    }
+    if (pdfPublicId !== undefined && slide.type === 'pdf') {
+      slide.pdfPublicId = pdfPublicId;
+    }
+    if (pdfPages !== undefined && slide.type === 'pdf') {
+      slide.pdfPages = pdfPages;
+    }
   if (order !== undefined) {
     slide.order = order;
   }
@@ -529,6 +550,9 @@ module.exports.updateSlide = asyncHandler(async (req, res, next) => {
         powerpointUrl: slide.powerpointUrl,
         powerpointPublicId: slide.powerpointPublicId,
         googleSlidesUrl: slide.googleSlidesUrl,
+        pdfUrl: slide.pdfUrl,
+        pdfPublicId: slide.pdfPublicId,
+        pdfPages: slide.pdfPages,
         createdAt: slide.createdAt,
       updatedAt: slide.updatedAt
     }

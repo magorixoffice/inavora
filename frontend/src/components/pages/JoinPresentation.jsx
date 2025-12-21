@@ -28,6 +28,7 @@ import LeaderboardParticipantView from '../interactions/leaderboard/ParticipantV
 import MiroParticipantView from '../interactions/miro/participant/ParticipantView';
 import PowerPointParticipantView from '../interactions/powerpoint/participant/ParticipantView';
 import GoogleSlidesParticipantView from '../interactions/googleSlides/participant/ParticipantView';
+import PdfParticipantView from '../interactions/pdf/participant/ParticipantView';
 import InstructionParticipantView from '../interactions/instruction/participant/ParticipantView';
 import SlideCanvas from '../presentation/SlideCanvas';
 
@@ -976,6 +977,12 @@ const JoinPresentation = () => {
       case 'google_slides':
         return (
           <GoogleSlidesParticipantView
+            slide={currentSlide}
+          />
+        );
+      case 'pdf':
+        return (
+          <PdfParticipantView
             slide={currentSlide}
           />
         );

@@ -131,7 +131,7 @@ export default function Presentation() {
           // If slide has quizSettings but type is not 'quiz', treat it as a quiz slide
           const isQuizSlide = slide.type === 'quiz' || (slide.quizSettings && slide.type === 'multiple_choice');
           
-          return {
+          const mappedSlide = {
             ...slide,
             id: slide.id || `slide-${Date.now()}-${Math.random()}`,
             // Override type if it has quizSettings but wrong type
@@ -149,6 +149,15 @@ export default function Presentation() {
             quizSettings: slide.quizSettings,
             _id: slide.id
           };
+          
+          // Preserve PDF fields if it's a PDF slide
+          if (slide.type === 'pdf') {
+            mappedSlide.pdfUrl = slide.pdfUrl || '';
+            mappedSlide.pdfPublicId = slide.pdfPublicId || null;
+            mappedSlide.pdfPages = Array.isArray(slide.pdfPages) ? slide.pdfPages : [];
+          }
+          
+          return mappedSlide;
         });
 
         // Preserve the actual order from the backend - don't force instruction slides to the beginning
@@ -658,7 +667,7 @@ export default function Presentation() {
           const slideType = (slide.quizSettings && slide.type !== 'quiz') ? 'quiz' : slide.type;
           
           // Update existing slide
-          await presentationService.updateSlide(presentation.id, slide._id, {
+          const response = await presentationService.updateSlide(presentation.id, slide._id, {
             type: slideType,
             question: slide.question,
             options: slide.options,
@@ -696,10 +705,22 @@ export default function Presentation() {
               ...(slide.powerpointPublicId && { powerpointPublicId: slide.powerpointPublicId })
             }),
             ...(slideType === 'google_slides' && { googleSlidesUrl: slide.googleSlidesUrl || '' }),
+            ...(slideType === 'pdf' && { 
+              pdfUrl: slide.pdfUrl || '',
+              ...(slide.pdfPublicId && { pdfPublicId: slide.pdfPublicId }),
+              ...(slide.pdfPages && { pdfPages: slide.pdfPages })
+            }),
             // Add order property
             order: slide.order
           });
-          updatedSlides.push(slide);
+          
+          // Use response.slide to get the latest data from backend (including PDF fields)
+          updatedSlides.push({
+            ...slide,
+            ...response.slide, // Merge response data to ensure we have latest PDF fields
+            _id: response.slide.id,
+            id: response.slide.id
+          });
         } else {
           // Calculate correct type - if slide has quizSettings, ensure type is 'quiz'
           const slideType = (slide.quizSettings && slide.type !== 'quiz') ? 'quiz' : slide.type;
@@ -743,13 +764,20 @@ export default function Presentation() {
               ...(slide.powerpointPublicId && { powerpointPublicId: slide.powerpointPublicId })
             }),
             ...(slideType === 'google_slides' && { googleSlidesUrl: slide.googleSlidesUrl || '' }),
+            ...(slideType === 'pdf' && { 
+              pdfUrl: slide.pdfUrl || '',
+              ...(slide.pdfPublicId && { pdfPublicId: slide.pdfPublicId }),
+              ...(slide.pdfPages && { pdfPages: slide.pdfPages })
+            }),
             // Add order property
             order: slide.order
           });
 
           // Add slide with backend ID to updated slides
+          // Use response.slide data to ensure we have the latest data from backend (including PDF fields)
           updatedSlides.push({
             ...slide,
+            ...response.slide, // Merge response data to get latest PDF fields
             _id: response.slide.id
           });
 
@@ -914,6 +942,11 @@ export default function Presentation() {
       }),
       ...(slideType === 'google_slides' && {
         googleSlidesUrl: ''
+      }),
+      ...(slideType === 'pdf' && {
+        pdfUrl: '',
+        pdfPublicId: null,
+        pdfPages: []
       }),
       // Instruction slide specific content
       ...(slideType === 'instruction' && {

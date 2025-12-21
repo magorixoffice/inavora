@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '../../config/api';
 import InstructionPresenterView from '../interactions/instruction/presenter/PresenterView';
 
@@ -79,6 +79,117 @@ const CorrectAreaOverlay = ({ correctArea, imageRef }) => {
       className="absolute border-2 border-[#4CAF50] bg-[#4CAF50]/10 pointer-events-none"
       style={overlayStyle}
     />
+  );
+};
+
+// PDF Canvas Preview Component
+const PdfCanvasPreview = ({ slide, question, t }) => {
+  const pdfPages = slide?.pdfPages || [];
+  const [currentPageIndex, setCurrentPageIndex] = useState(0);
+  const [imageError, setImageError] = useState(false);
+
+  // Reset image error when page changes
+  useEffect(() => {
+    setImageError(false);
+  }, [currentPageIndex]);
+
+  if (!pdfPages || pdfPages.length === 0) {
+    return (
+      <div className="w-full max-w-4xl mx-auto">
+        <div className="rounded-3xl border border-[#2F2F2F] bg-[#1F1F1F] shadow-[0_12px_40px_rgba(0,0,0,0.45)] p-4 sm:p-6 lg:p-8">
+          <div className="border-b border-[#2A2A2A] px-4 sm:px-6 lg:px-10 pt-6 sm:pt-8 lg:pt-10 pb-4 sm:pb-6">
+            <h2 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-[#E0E0E0] text-center">
+              {t('slide_editors.pdf.pdf_slide')}
+            </h2>
+          </div>
+          <div className="px-4 sm:px-6 lg:px-10 py-6 sm:py-8 lg:py-10">
+            <div className="rounded-xl border-2 border-dashed border-[#3A3A3A] bg-[#232323] py-12 sm:py-16 text-center">
+              <p className="text-[#9E9E9E]">{t('slide_editors.pdf.upload_pdf_first')}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const currentPage = pdfPages[currentPageIndex];
+  const totalPages = pdfPages.length;
+
+  const goToPreviousPage = () => {
+    if (currentPageIndex > 0) {
+      setCurrentPageIndex(currentPageIndex - 1);
+    }
+  };
+
+  const goToNextPage = () => {
+    if (currentPageIndex < totalPages - 1) {
+      setCurrentPageIndex(currentPageIndex + 1);
+    }
+  };
+
+  return (
+    <div className="w-full max-w-4xl mx-auto">
+      <div className="rounded-3xl border border-[#2F2F2F] bg-[#1F1F1F] shadow-[0_12px_40px_rgba(0,0,0,0.45)] p-4 sm:p-6 lg:p-8">
+        <div className="border-b border-[#2A2A2A] px-4 sm:px-6 lg:px-10 pt-6 sm:pt-8 lg:pt-10 pb-4 sm:pb-6 mb-4 sm:mb-6">
+          <h2 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-[#E0E0E0] text-center">
+            {t('slide_editors.pdf.pdf_slide')}
+          </h2>
+        </div>
+        
+        {/* PDF Page Display */}
+        <div className="rounded-xl overflow-hidden border border-[#2F2F2F] bg-[#232323] mb-4">
+          <div className="flex items-center justify-center min-h-[400px] max-h-[70vh] p-4">
+            {currentPage?.imageUrl ? (
+              <img 
+                src={currentPage.imageUrl} 
+                alt={`Page ${currentPage.pageNumber}`}
+                className="max-w-full max-h-full object-contain rounded-lg"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.nextSibling.style.display = 'flex';
+                }}
+              />
+            ) : null}
+            <div className="hidden items-center justify-center text-[#9E9E9E]">
+              <p>{t('slide_editors.pdf.image_load_error')}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Navigation Controls */}
+        <div className="bg-[#2A2A2A] rounded-lg border border-[#3B3B3B] p-3 sm:p-4 flex items-center justify-between">
+          <button
+            onClick={goToPreviousPage}
+            disabled={currentPageIndex === 0}
+            className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm ${
+              currentPageIndex === 0
+                ? 'bg-[#3B3B3B] text-[#666666] cursor-not-allowed'
+                : 'bg-[#4CAF50] hover:bg-[#43A047] text-white'
+            }`}
+          >
+            <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="hidden sm:inline">{t('slide_editors.pdf.previous')}</span>
+          </button>
+
+          <div className="text-[#E0E0E0] text-xs sm:text-sm font-medium">
+            {t('slide_editors.pdf.page')} {currentPageIndex + 1} / {totalPages}
+          </div>
+
+          <button
+            onClick={goToNextPage}
+            disabled={currentPageIndex === totalPages - 1}
+            className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm ${
+              currentPageIndex === totalPages - 1
+                ? 'bg-[#3B3B3B] text-[#666666] cursor-not-allowed'
+                : 'bg-[#4CAF50] hover:bg-[#43A047] text-white'
+            }`}
+          >
+            <span className="hidden sm:inline">{t('slide_editors.pdf.next')}</span>
+            <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };
 
@@ -1003,6 +1114,9 @@ const SlideCanvas = ({ slide, presentation, isPresenter = false, onSettingsChang
             </div>
           </div>
         );
+
+      case 'pdf':
+        return <PdfCanvasPreview slide={slide} question={question} t={t} />;
 
       case 'google_slides':
         return (

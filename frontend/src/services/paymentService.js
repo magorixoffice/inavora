@@ -53,10 +53,10 @@ export const createOrder = async (planId, token) => {
         // Better error handling
         if (error.code === 'ERR_NETWORK' || error.message.includes('ERR_CONNECTION_REFUSED')) {
             console.error('Connection error:', error);
-            throw new Error('Cannot connect to server. Please make sure the backend server is running on port 4001. Check your .env file has VITE_API_URL=http://localhost:4001');
+            throw new Error('Cannot connect to server. Please make sure the backend server is running on port 4000. Check your .env file has VITE_API_URL=http://localhost:4000');
         }
         if (error.code === 'ECONNREFUSED') {
-            throw new Error('Backend server is not running. Please start the backend server on port 4001.');
+            throw new Error('Backend server is not running. Please start the backend server on port 4000.');
         }
         if (error.response?.status === 401) {
             throw new Error('Authentication failed. Please login again.');

@@ -20,6 +20,7 @@ import TypeAnswerPresenterView from '../interactions/typeAnswer/presenter/Presen
 import MiroPresenterView from '../interactions/miro/presenter/PresenterView';
 import PowerPointPresenterView from '../interactions/powerpoint/presenter/PresenterView';
 import GoogleSlidesPresenterView from '../interactions/googleSlides/presenter/PresenterView';
+import PdfPresenterView from '../interactions/pdf/presenter/PresenterView';
 import {
   defaultOpenEndedSettings,
   mergeOpenEndedState,
@@ -190,7 +191,43 @@ const PresentMode = () => {
         
         setPresentation(data.presentation);
         const loadedSlides = data.slides || [];
-        setSlides(loadedSlides);
+        
+        // Ensure PDF fields are preserved when loading slides
+        const mappedSlides = loadedSlides.map(slide => {
+          // Preserve all PDF-related fields
+          if (slide.type === 'pdf') {
+            // Ensure pdfPages is an array and has content
+            const pdfPages = Array.isArray(slide.pdfPages) && slide.pdfPages.length > 0 
+              ? slide.pdfPages 
+              : (slide.pdfPages || []);
+            
+            return {
+              ...slide,
+              pdfUrl: slide.pdfUrl || '',
+              pdfPublicId: slide.pdfPublicId || null,
+              pdfPages: pdfPages
+            };
+          }
+          return slide;
+        });
+        
+        // Debug: Log slides to check PDF data
+        console.log('PresentMode - Loaded slides:', mappedSlides);
+        const pdfSlides = mappedSlides.filter(s => s.type === 'pdf');
+        if (pdfSlides.length > 0) {
+          console.log('PresentMode - PDF slides found:', pdfSlides);
+          pdfSlides.forEach((slide, idx) => {
+            console.log(`PDF Slide ${idx}:`, {
+              id: slide.id,
+              pdfUrl: slide.pdfUrl,
+              pdfPublicId: slide.pdfPublicId,
+              pdfPages: slide.pdfPages,
+              pdfPagesLength: slide.pdfPages?.length
+            });
+          });
+        }
+        
+        setSlides(mappedSlides);
 
         if (loadedSlides.length === 0) {
           console.error('Presentation has no slides');
@@ -273,7 +310,51 @@ const PresentMode = () => {
         setParticipantCount(data.participantCount);
       }
       if (Array.isArray(data?.slides) && data.slides.length > 0) {
-        setSlides(data.slides);
+        // Ensure PDF fields are preserved when setting slides from socket
+        // Merge with existing slides to preserve PDF data
+        setSlides((prevSlides) => {
+          return data.slides.map((incomingSlide) => {
+            // Find the corresponding existing slide
+            const existingSlide = prevSlides.find(s => {
+              const existingId = getSlideId(s);
+              const incomingId = getSlideId(incomingSlide);
+              return existingId && incomingId && existingId === incomingId;
+            });
+            
+            // If it's a PDF slide, preserve PDF fields from existing slide if incoming is empty
+            if (incomingSlide.type === 'pdf' || existingSlide?.type === 'pdf') {
+              const existingPdfFields = existingSlide ? {
+                pdfUrl: existingSlide.pdfUrl,
+                pdfPublicId: existingSlide.pdfPublicId,
+                pdfPages: existingSlide.pdfPages
+              } : {};
+              
+              // Use incoming PDF fields if they're valid, otherwise use existing
+              const pdfUrl = (incomingSlide.pdfUrl && incomingSlide.pdfUrl !== '') 
+                ? incomingSlide.pdfUrl 
+                : (existingPdfFields.pdfUrl || '');
+              
+              const pdfPublicId = (incomingSlide.pdfPublicId && incomingSlide.pdfPublicId !== null)
+                ? incomingSlide.pdfPublicId
+                : (existingPdfFields.pdfPublicId || null);
+              
+              const pdfPages = (Array.isArray(incomingSlide.pdfPages) && incomingSlide.pdfPages.length > 0)
+                ? incomingSlide.pdfPages
+                : (Array.isArray(existingPdfFields.pdfPages) && existingPdfFields.pdfPages.length > 0)
+                  ? existingPdfFields.pdfPages
+                  : [];
+              
+              return {
+                ...incomingSlide,
+                pdfUrl,
+                pdfPublicId,
+                pdfPages
+              };
+            }
+            
+            return incomingSlide;
+          });
+        });
       }
     };
 
@@ -369,7 +450,45 @@ const PresentMode = () => {
           prevSlides.map((slideItem) => {
             const existingId = getSlideId(slideItem);
             if (incomingSlideId && existingId === incomingSlideId) {
-              return { ...slideItem, ...data.slide };
+              // Preserve PDF fields when updating slide from socket
+              // Extract PDF fields first before spreading data.slide
+              const existingPdfFields = slideItem.type === 'pdf' ? {
+                pdfUrl: slideItem.pdfUrl,
+                pdfPublicId: slideItem.pdfPublicId,
+                pdfPages: slideItem.pdfPages
+              } : {};
+              
+              // Remove PDF fields from data.slide if they're invalid to prevent overwriting
+              const { pdfUrl: _, pdfPublicId: __, pdfPages: ___, ...dataSlideWithoutPdf } = data.slide;
+              
+              // Spread data.slide (without PDF fields) to update other fields
+              const updatedSlide = { ...slideItem, ...dataSlideWithoutPdf };
+              
+              // Restore PDF fields - only use incoming if valid, otherwise preserve existing
+              if (slideItem.type === 'pdf' || data.slide.type === 'pdf') {
+                // Only update PDF fields if incoming data has valid values
+                if (data.slide.pdfUrl !== undefined && data.slide.pdfUrl !== null && data.slide.pdfUrl !== '') {
+                  updatedSlide.pdfUrl = data.slide.pdfUrl;
+                } else if (existingPdfFields.pdfUrl) {
+                  updatedSlide.pdfUrl = existingPdfFields.pdfUrl;
+                }
+                
+                if (data.slide.pdfPublicId !== undefined && data.slide.pdfPublicId !== null) {
+                  updatedSlide.pdfPublicId = data.slide.pdfPublicId;
+                } else if (existingPdfFields.pdfPublicId) {
+                  updatedSlide.pdfPublicId = existingPdfFields.pdfPublicId;
+                }
+                
+                // Only use incoming pdfPages if it's a non-empty array, otherwise preserve existing
+                if (data.slide.pdfPages !== undefined && Array.isArray(data.slide.pdfPages) && data.slide.pdfPages.length > 0) {
+                  updatedSlide.pdfPages = data.slide.pdfPages;
+                } else if (existingPdfFields.pdfPages && Array.isArray(existingPdfFields.pdfPages) && existingPdfFields.pdfPages.length > 0) {
+                  updatedSlide.pdfPages = existingPdfFields.pdfPages;
+                } else {
+                  updatedSlide.pdfPages = existingPdfFields.pdfPages || [];
+                }
+              }
+              return updatedSlide;
             }
             return slideItem;
           }),
@@ -425,7 +544,45 @@ const PresentMode = () => {
           const updatedSlides = prevSlides.map((slideItem) => {
             const existingId = getSlideId(slideItem);
             if (incomingSlideId && existingId === incomingSlideId) {
-              return { ...slideItem, ...data.slide };
+              // Preserve PDF fields when updating slide from socket
+              // Extract PDF fields first before spreading data.slide
+              const existingPdfFields = slideItem.type === 'pdf' ? {
+                pdfUrl: slideItem.pdfUrl,
+                pdfPublicId: slideItem.pdfPublicId,
+                pdfPages: slideItem.pdfPages
+              } : {};
+              
+              // Remove PDF fields from data.slide if they're invalid to prevent overwriting
+              const { pdfUrl: _, pdfPublicId: __, pdfPages: ___, ...dataSlideWithoutPdf } = data.slide;
+              
+              // Spread data.slide (without PDF fields) to update other fields
+              const updatedSlide = { ...slideItem, ...dataSlideWithoutPdf };
+              
+              // Restore PDF fields - only use incoming if valid, otherwise preserve existing
+              if (slideItem.type === 'pdf' || data.slide.type === 'pdf') {
+                // Only update PDF fields if incoming data has valid values
+                if (data.slide.pdfUrl !== undefined && data.slide.pdfUrl !== null && data.slide.pdfUrl !== '') {
+                  updatedSlide.pdfUrl = data.slide.pdfUrl;
+                } else if (existingPdfFields.pdfUrl) {
+                  updatedSlide.pdfUrl = existingPdfFields.pdfUrl;
+                }
+                
+                if (data.slide.pdfPublicId !== undefined && data.slide.pdfPublicId !== null) {
+                  updatedSlide.pdfPublicId = data.slide.pdfPublicId;
+                } else if (existingPdfFields.pdfPublicId) {
+                  updatedSlide.pdfPublicId = existingPdfFields.pdfPublicId;
+                }
+                
+                // Only use incoming pdfPages if it's a non-empty array, otherwise preserve existing
+                if (data.slide.pdfPages !== undefined && Array.isArray(data.slide.pdfPages) && data.slide.pdfPages.length > 0) {
+                  updatedSlide.pdfPages = data.slide.pdfPages;
+                } else if (existingPdfFields.pdfPages && Array.isArray(existingPdfFields.pdfPages) && existingPdfFields.pdfPages.length > 0) {
+                  updatedSlide.pdfPages = existingPdfFields.pdfPages;
+                } else {
+                  updatedSlide.pdfPages = existingPdfFields.pdfPages || [];
+                }
+              }
+              return updatedSlide;
             }
             return slideItem;
           });
@@ -1002,6 +1159,27 @@ const PresentMode = () => {
         return (
           <GoogleSlidesPresenterView
             slide={slide}
+            responses={openEndedResponses}
+          />
+        );
+      case 'pdf':
+        // Debug: Log slide data for PDF
+        console.log('PresentMode - PDF slide:', slide);
+        console.log('PresentMode - PDF slide pdfPages:', slide?.pdfPages);
+        
+        // Safety check: Ensure PDF fields exist, fallback to empty if missing
+        const pdfSlide = {
+          ...slide,
+          pdfUrl: slide.pdfUrl || '',
+          pdfPublicId: slide.pdfPublicId || null,
+          pdfPages: Array.isArray(slide.pdfPages) && slide.pdfPages.length > 0 
+            ? slide.pdfPages 
+            : []
+        };
+        
+        return (
+          <PdfPresenterView
+            slide={pdfSlide}
             responses={openEndedResponses}
           />
         );
