@@ -1283,6 +1283,11 @@ const getSlideResponses = asyncHandler(async (req, res, next) => {
   const { presentationId, slideId } = req.params;
   const userId = req.userId;
 
+  // Check if slideId is a valid MongoDB ObjectId (not a temporary ID)
+  if (!slideId || slideId.startsWith('temp-') || !/^[0-9a-fA-F]{24}$/.test(slideId)) {
+    throw new AppError('Invalid slide ID', 400, 'VALIDATION_ERROR');
+  }
+
   // Verify presentation belongs to user
   const presentation = await Presentation.findOne({ _id: presentationId, userId });
   if (!presentation) {

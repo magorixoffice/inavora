@@ -4,6 +4,8 @@ import { io } from 'socket.io-client';
 import { getSocketUrl } from '../../utils/config';
 import * as presentationService from '../../services/presentationService';
 import { formatSlideDataForExport } from '../../utils/exportUtils';
+import { exportToPDF } from '../../utils/pdfExportUtils';
+import { captureResultsPageAsPDF } from '../../utils/pdfExportFromPage';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import { useAuth } from '../../context/AuthContext';
@@ -371,6 +373,12 @@ const PresentationResults = ({ slides, presentationId }) => {
                     const slideId = slide.id || slide._id;
                     if (!slideId) continue;
                     
+                    // Skip slides with temporary IDs (not saved to database yet)
+                    if (slideId.startsWith('temp-') || !/^[0-9a-fA-F]{24}$/.test(slideId)) {
+                        console.warn(`Skipping slide with temporary ID: ${slideId}`);
+                        continue;
+                    }
+                    
                     const response = await presentationService.getSlideResponses(presentationId, slideId);
                     
                     if (response && response.success && response.slide && response.responses) {
@@ -408,9 +416,22 @@ const PresentationResults = ({ slides, presentationId }) => {
             } else if (format === 'excel') {
                 // Export all slides to a multi-sheet Excel file
                 exportAllSlidesToExcel(allSlideData, filename);
+            } else if (format === 'pdf') {
+                // Export results page as PDF with colorful styling
+                // Find the main results container
+                const mainContainer = document.querySelector('.max-w-5xl');
+                if (!mainContainer) {
+                    toast.error(t('presentation_results.export_pdf_failed'));
+                    setIsExporting(false);
+                    return;
+                }
+                
+                // Pass slide count for cover page
+                await captureResultsPageAsPDF(mainContainer, presentation, filename, slides?.length || allSlideData.length);
+                toast.success(t('presentation_results.exported_pdf_success', { count: allSlideData.length }));
+            } else {
+                toast.success(t('presentation_results.exported_success', { count: allSlideData.length, format: format.toUpperCase() }));
             }
-            
-            toast.success(t('presentation_results.exported_success', { count: allSlideData.length, format: format.toUpperCase() }));
         } catch (error) {
             console.error('Export error:', error);
             toast.error(t('presentation_results.export_failed'));
@@ -1036,6 +1057,13 @@ const PresentationResults = ({ slides, presentationId }) => {
                                         >
                                             {t('presentation_results.export_excel')}
                                         </button>
+                                        <button
+                                            onClick={() => handleExportData('pdf')}
+                                            disabled={isExporting}
+                                            className="w-full text-left px-4 py-2 hover:bg-white/5 text-sm text-white disabled:opacity-50"
+                                        >
+                                            {t('presentation_results.export_pdf')}
+                                        </button>
                                     </div>
                                 </div>
                             )}
@@ -1091,7 +1119,7 @@ const PresentationResults = ({ slides, presentationId }) => {
                             : (slide.question?.text || slide.type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()));
                         
                         return (
-                            <div key={slideId || index} className="w-full mb-6 sm:mb-8">
+                            <div key={slideId || index} className="w-full mb-6 sm:mb-8" data-slide-type={slide.type}>
                                 <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
                                     <h3 className="text-xl font-semibold text-[#E0E0E0]">
                                         {t('presentation_results.slide_number', { number: index + 1 })}: {slideTitle}
