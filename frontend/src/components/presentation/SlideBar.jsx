@@ -209,8 +209,16 @@ const SlideBar = ({ slides, currentSlideIndex, onSlideSelect, onDeleteSlide, onN
   // When reordering, map both indices back to original array
   const handleSlideReorder = useCallback((fromOrderedIndex, toOrderedIndex) => {
     if (!slides || !onSlideReorder) return;
+    
+    if (fromOrderedIndex < 0 || fromOrderedIndex >= orderedSlides.length || 
+        toOrderedIndex < 0 || toOrderedIndex >= orderedSlides.length) {
+      return;
+    }
+    
     const fromSlide = orderedSlides[fromOrderedIndex];
     const toSlide = orderedSlides[toOrderedIndex];
+    
+    if (!fromSlide || !toSlide) return;
     
     const fromOriginalIndex = slides.findIndex(s => {
       const fromId = fromSlide.id || fromSlide._id;
@@ -875,6 +883,7 @@ const SlideBar = ({ slides, currentSlideIndex, onSlideSelect, onDeleteSlide, onN
     stopAutoScroll();
     
     if (draggedIndex !== null && draggedIndex !== dropIndex) {
+      // Use internal handleSlideReorder which converts ordered indices to original indices
       handleSlideReorder(draggedIndex, dropIndex);
     }
     setDraggedIndex(null);
@@ -1329,7 +1338,11 @@ const SlideBar = ({ slides, currentSlideIndex, onSlideSelect, onDeleteSlide, onN
               >
                 {/* Drag Handle - Only show for draggable slides */}
                 {isSlideDraggable(slide) && (
-                  <div className="absolute -top-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 bg-[#2A2A2A] rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                  <div 
+                    className="absolute -top-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 bg-[#2A2A2A] rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onPointerDown={(e) => e.stopPropagation()}
+                  >
                     <GripVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-[#6C6C6C]" />
                   </div>
                 )}
@@ -1350,33 +1363,37 @@ const SlideBar = ({ slides, currentSlideIndex, onSlideSelect, onDeleteSlide, onN
                   <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-8 h-1 bg-[#4CAF50] rounded-full"></div>
                 )}
 
-                {/* Edit Button */}
-                {onEditSlide && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEditSlide(index);
-                    }}
-                    className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 p-1.5 bg-[#388E3C] rounded-full shadow-lg hover:bg-[#4CAF50] transition-all z-20 touch-manipulation"
-                    title="Edit slide"
-                  >
-                    <Settings className="h-3.5 w-3.5 text-white" />
-                  </button>
-                )}
+                 {/* Edit Button */}
+                 {onEditSlide && (
+                   <button
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       onEditSlide(index);
+                     }}
+                     onMouseDown={(e) => e.stopPropagation()}
+                     onPointerDown={(e) => e.stopPropagation()}
+                     className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 p-1.5 bg-[#388E3C] rounded-full shadow-lg hover:bg-[#4CAF50] transition-all z-20 touch-manipulation"
+                     title="Edit slide"
+                   >
+                     <Settings className="h-3.5 w-3.5 text-white" />
+                   </button>
+                 )}
 
-                {/* Delete Button - Only show for deletable slides */}
-                {displaySlides.length > 1 && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteSlide(index);
-                    }}
-                    className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 p-1.5 bg-[#EF5350] rounded-full shadow-lg hover:bg-[#E53935] transition-all z-20 touch-manipulation"
-                    title="Delete slide"
-                  >
-                    <X className="h-3.5 w-3.5 text-white" />
-                  </button>
-                )}
+                 {/* Delete Button - Only show for deletable slides */}
+                 {displaySlides.length > 1 && (
+                   <button
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       handleDeleteSlide(index);
+                     }}
+                     onMouseDown={(e) => e.stopPropagation()}
+                     onPointerDown={(e) => e.stopPropagation()}
+                     className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 p-1.5 bg-[#EF5350] rounded-full shadow-lg hover:bg-[#E53935] transition-all z-20 touch-manipulation"
+                     title="Delete slide"
+                   >
+                     <X className="h-3.5 w-3.5 text-white" />
+                   </button>
+                 )}
 
               </div>
               </div>
@@ -1498,6 +1515,8 @@ const SlideBar = ({ slides, currentSlideIndex, onSlideSelect, onDeleteSlide, onN
                   e.stopPropagation();
                   handleDeleteSlide(index);
                 }}
+                onMouseDown={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
                 className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 p-1 bg-[#242424] rounded-full shadow-md hover:bg-[#2F2F2F] transition-all"
                 title="Delete slide"
               >

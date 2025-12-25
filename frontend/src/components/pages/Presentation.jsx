@@ -965,9 +965,56 @@ export default function Presentation() {
 
     // Add locally - instruction slides should always be at the top initially
     if (slideType === 'instruction') {
-      // Place instruction slide at the beginning
-      setSlides(prev => [newSlide, ...prev]);
+      // Place instruction slide at the beginning with order 0
+      newSlide.order = 0;
+      // Update order of all existing slides (shift them by +1)
+      setSlides(prev => {
+        const updatedSlides = prev.map(slide => ({
+          ...slide,
+          order: (slide.order || 0) + 1
+        }));
+        return [newSlide, ...updatedSlides];
+      });
       setCurrentSlideIndex(0);
+    } else if (slideType === 'text') {
+      // Place text slide at second position (after instruction slide if it exists)
+      const instructionSlideIndex = slides.findIndex(slide => slide.type === 'instruction');
+      
+      if (instructionSlideIndex >= 0) {
+        // Instruction slide exists - place text slide right after it (position 1)
+        newSlide.order = 1;
+        // Update order of slides after instruction slide (shift them by +1)
+        setSlides(prev => {
+          const updatedSlides = prev.map(slide => {
+            const currentOrder = slide.order || 0;
+            // Only shift slides that come after instruction slide (order >= 1)
+            if (currentOrder >= 1) {
+              return { ...slide, order: currentOrder + 1 };
+            }
+            return slide;
+          });
+          // Insert text slide at position 1 (right after instruction)
+          const newSlidesArray = [...updatedSlides];
+          newSlidesArray.splice(1, 0, newSlide);
+          // Recalculate order for all slides to ensure consistency
+          return newSlidesArray.map((slide, index) => ({
+            ...slide,
+            order: index
+          }));
+        });
+        setCurrentSlideIndex(1);
+      } else {
+        // No instruction slide - place text slide at first position
+        newSlide.order = 0;
+        setSlides(prev => {
+          const updatedSlides = prev.map(slide => ({
+            ...slide,
+            order: (slide.order || 0) + 1
+          }));
+          return [newSlide, ...updatedSlides];
+        });
+        setCurrentSlideIndex(0);
+      }
     } else {
       // Add other slides normally at the end
       setSlides(prev => [...prev, newSlide]);
@@ -1067,8 +1114,14 @@ export default function Presentation() {
     // Insert it at the new position
     newSlides.splice(dropIndex, 0, draggedSlide);
     
+    // Update order field for all slides to match their new positions
+    const updatedSlides = newSlides.map((slide, index) => ({
+      ...slide,
+      order: index
+    }));
+    
     // Update slides and current index
-    setSlides(newSlides);
+    setSlides(updatedSlides);
     
     // Update current slide index if needed
     if (currentSlideIndex === dragIndex) {
