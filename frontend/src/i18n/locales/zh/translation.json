@@ -2857,7 +2857,7 @@
     "title": "聊天机器人",
     "open_chatbot": "打开聊天机器人",
     "close_chatbot": "关闭聊天机器人",
-    "welcome_message": "你好！我准备好了。今天我能为您做些什么？",
+    "welcome_message": "你好！我是 Inavora，您的 AI 助手。我准备好了。今天我能为您做些什么？",
     "placeholder": "向 伊纳沃拉 发送消息...",
     "retry": "重试",
     "retry_attempt": "正在尝试重试 #{{count}}：\"{{prompt}}\"...",
