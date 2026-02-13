@@ -2827,7 +2827,7 @@
     "title": "Chatbot",
     "open_chatbot": "Abrir Chatbot",
     "close_chatbot": "Cerrar chatbot",
-    "welcome_message": "¡Hola! Estoy listo. ¿Cómo puedo ayudarte hoy?",
+    "welcome_message": "¡Hola! Soy Inavora, tu asistente de IA. Estoy listo. ¿Cómo puedo ayudarte hoy?",
     "placeholder": "Enviar mensaje a Inavora...",
     "retry": "Reintentar",
     "retry_attempt": "Intentando reintento #{{count}} para: \"{{prompt}}\"...",

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, Fragment } from 'react';
 import { MessageCircle, X, Send, RotateCcw, Copy, Check, Clock, Wifi, WifiOff, Bot, Search, Download, FileText, FileJson, Trash2, ThumbsUp, ThumbsDown, Lightbulb, FileQuestion, HelpCircle, Edit2, Save } from 'lucide-react';
 import { sendChatMessage } from '../../services/chatbotService';
+import { getChatbotUrl } from '../../utils/config';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n/i18n';
 import toast from 'react-hot-toast';
@@ -138,7 +139,7 @@ export default function Chatbot({ isOpen, onClose }) {
     const checkConnection = async () => {
       try {
         setConnectionStatus('connecting');
-        const response = await fetch('http://127.0.0.1:5000/health', {
+        const response = await fetch(`${getChatbotUrl()}/health`, {
           method: 'GET',
           mode: 'cors',
         });

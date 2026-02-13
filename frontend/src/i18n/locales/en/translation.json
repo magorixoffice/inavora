@@ -3023,7 +3023,7 @@
     "title": "Chatbot",
     "open_chatbot": "Open Chatbot",
     "close_chatbot": "Close chatbot",
-    "welcome_message": "Hello! I am ready. How can I help you today?",
+    "welcome_message": "Hello! I am Inavora, your AI assistant. I am ready. How can I help you today?",
     "placeholder": "Send message to Inavora...",
     "retry": "Retry",
     "retry_attempt": "Attempting retry #{{count}} for: \"{{prompt}}\"...",
