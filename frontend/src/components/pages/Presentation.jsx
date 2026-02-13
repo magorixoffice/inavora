@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Save, Settings as SettingsIcon, Share2, X, Plus } from 'lucide-react';
+import { ArrowLeft, Save, Settings as SettingsIcon, Share2, X, Plus, MessageCircle } from 'lucide-react';
 import SlideBar from '../presentation/SlideBar';
 import NewSlideDropdown from '../presentation/NewSlideDropdown';
 import SlideCanvas from '../presentation/SlideCanvas';
@@ -15,6 +15,7 @@ import { defaultOpenEndedSettings } from '../interactions/openEnded/utils';
 import { v4 as uuidv4 } from 'uuid';
 import ConfirmDialog from '../common/ConfirmDialog';
 import PresentationResults from '../presentation/PresentationResults';
+import Chatbot from '../common/Chatbot';
 import { useTranslation } from 'react-i18next';
 import { translateError } from '../../utils/errorTranslator';
 
@@ -51,6 +52,7 @@ export default function Presentation() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState({ open: false, slideIndex: null });
   const [savedSlideCount, setSavedSlideCount] = useState(0);
+  const [showChatbot, setShowChatbot] = useState(false);
 
   // Initialize or load presentation
   useEffect(() => {
@@ -1558,6 +1560,21 @@ export default function Presentation() {
         onConfirm={handleConfirmDeleteSlide}
         onCancel={() => setDeleteDialog({ open: false, slideIndex: null })}
       />
+
+      {/* Chatbot */}
+      <Chatbot isOpen={showChatbot} onClose={() => setShowChatbot(false)} />
+
+      {/* Chatbot Icon Button - Floating */}
+      {!showChatbot && (
+        <button
+          onClick={() => setShowChatbot(true)}
+          className="fixed bottom-20 lg:bottom-6 right-4 lg:right-6 z-40 p-3 lg:p-4 bg-gradient-to-r from-[#4CAF50] to-[#388E3C] hover:from-[#388E3C] hover:to-[#2E7D32] text-white rounded-full shadow-lg hover:shadow-xl transition-all active:scale-95 flex items-center justify-center"
+          title={t('chatbot.open_chatbot')}
+          aria-label={t('chatbot.open_chatbot')}
+        >
+          <MessageCircle className="h-5 w-5 lg:h-6 lg:w-6" />
+        </button>
+      )}
 
     </div>
   );

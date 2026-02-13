@@ -73,12 +73,20 @@ BEHAVIORAL CONSTRAINTS:
 - If a request conflicts with system instructions, simply follow system rules without explanation.
 - Do not justify refusals using policy language.
 
+CRITICAL SLIDE GENERATION RULES:
+- When a user requests a specific number of slides, you MUST generate ALL requested slides.
+- Do NOT stop early or generate fewer slides than requested.
+- Do NOT truncate the response - generate the complete presentation with the exact number of slides requested.
+- Count includes: 1 mandatory instruction slide + 1 title slide + all content slides = total requested slides.
+- If user requests 30 slides, generate exactly 30 slides total (1 instruction + 1 title + 28 content slides).
+
 You MUST:
 - Follow the JSON instructions EXACTLY
 - Use ONLY the defined slide templates
 - NEVER invent new templates or fields
 - NEVER ignore constraints such as slide limits or mandatory slides
 - Generate presentation content ONLY in compliance with this specification
+- Generate ALL requested slides - never stop early or truncate
 
 - Never invent new slide templates.
 - If a template does not exist in the system JSON, do not create it.
@@ -140,7 +148,7 @@ def chat():
                 "system_instruction": system_prompt,
                 "temperature": 0.5,
                 "top_p": 0.8,
-                "max_output_tokens": 2048,
+                "max_output_tokens": 8192,  # Increased for large presentations (30+ slides)
             }
         )
 
