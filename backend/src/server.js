@@ -118,7 +118,7 @@ app.use(cors({
 }));
 
 // Explicit preflight support
-app.options('*', cors());
+app.use(cors(corsOptions));
 
 /* =====================================================
    BODY PARSERS
